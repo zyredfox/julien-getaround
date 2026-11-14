@@ -1,6 +1,7 @@
 import type { TaxMode, TaxSettings } from "@/integrations/supabase/types";
 
 export type TaxEstimateInput = {
+  /** Chiffre d'affaires (somme des prix bruts des locations). */
   grossRevenue: number;
   netRevenue: number;
   expenses: number;
@@ -13,26 +14,41 @@ export type TaxEstimateInput = {
 export type TaxEstimateResult = {
   mode: TaxMode;
   cashNet: number;
+  /** CA utilisé pour le micro (brut locations). */
+  ca: number;
+  allowanceAmount: number;
   taxableBase: number;
   estimatedTax: number;
   netAfterTax: number;
 };
 
+/**
+ * Micro (défaut) : base = CA × (1 − abattement), puis × taux IR.
+ * Les dépenses / pertes cash ne réduisent PAS l'impôt en micro.
+ */
 export function estimateTax(input: TaxEstimateInput): TaxEstimateResult {
   const cashNet = input.netRevenue - input.expenses;
   const rate = input.settings.flat_rate_percent / 100;
-  const allowance = input.settings.micro_allowance_percent / 100;
+  const allowancePct = input.settings.micro_allowance_percent / 100;
+  const ca = Math.max(input.grossRevenue, 0);
 
   let taxableBase = 0;
+  let allowanceAmount = 0;
 
   switch (input.settings.mode) {
     case "micro_bic_like":
-      taxableBase = Math.max(input.grossRevenue * (1 - allowance), 0);
+      allowanceAmount = ca * allowancePct;
+      taxableBase = Math.max(ca - allowanceAmount, 0);
       break;
     case "flat_rate":
-    case "simplified_real":
-    default:
       taxableBase = Math.max(cashNet, 0);
+      break;
+    case "simplified_real":
+      taxableBase = Math.max(cashNet, 0);
+      break;
+    default:
+      allowanceAmount = ca * allowancePct;
+      taxableBase = Math.max(ca - allowanceAmount, 0);
       break;
   }
 
@@ -41,6 +57,8 @@ export function estimateTax(input: TaxEstimateInput): TaxEstimateResult {
   return {
     mode: input.settings.mode,
     cashNet,
+    ca,
+    allowanceAmount,
     taxableBase,
     estimatedTax,
     netAfterTax: cashNet - estimatedTax,
@@ -48,7 +66,9 @@ export function estimateTax(input: TaxEstimateInput): TaxEstimateResult {
 }
 
 export const TAX_MODE_LABELS: Record<TaxMode, string> = {
-  simplified_real: "Réel simplifié (revenus − dépenses)",
+  micro_bic_like: "Micro (CA − abattement, puis IR) — recommandé",
+  simplified_real: "Réel simplifié (revenus nets − dépenses)",
   flat_rate: "Taux simple sur le net cash",
-  micro_bic_like: "Type micro-BIC (abattement sur le brut)",
 };
+
+export const DEFAULT_TAX_MODE: TaxMode = "micro_bic_like";

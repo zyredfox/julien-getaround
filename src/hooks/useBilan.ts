@@ -112,8 +112,10 @@ export function useBilan(
     const economicNet = cashNet - amortization;
     const monthlyAmort = monthlyAmortAmount(vehicle);
 
+    // Micro : CA brut + abattement — les charges ne baissent pas l'impôt.
+    // Réel / taux : cash (± amort) comme base approx.
     const expensesForTax =
-      taxSettings?.mode === "micro_bic_like"
+      !taxSettings || taxSettings.mode === "micro_bic_like"
         ? totalExpenses
         : totalExpenses + amortization;
 

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { TaxSettings, Vehicle } from "@/integrations/supabase/types";
 import { siteConfig } from "@/config/site";
+import { DEFAULT_TAX_MODE } from "@/lib/taxEstimate";
 
 async function ensureWorkspace(userId: string): Promise<{
   spaceId: string;
@@ -76,7 +77,7 @@ async function ensureWorkspace(userId: string): Promise<{
       .insert({
         owner_id: userId,
         space_id: spaceId,
-        mode: "simplified_real",
+        mode: DEFAULT_TAX_MODE,
         flat_rate_percent: siteConfig.defaultTaxRatePercent,
         micro_allowance_percent: 50,
       })

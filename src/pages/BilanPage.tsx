@@ -130,7 +130,15 @@ export function BilanPage() {
               <p className="mt-1 text-sm text-ink-300">
                 Net après impôt approx. {formatMoney(bilan.tax.netAfterTax)}
               </p>
-              {bilan.hasAmortConfig && taxSettings?.mode !== "micro_bic_like" ? (
+              {taxSettings?.mode === "micro_bic_like" ? (
+                <p className="mt-2 text-xs leading-relaxed text-ink-300">
+                  Micro : CA {formatMoney(bilan.tax.ca)} − abattement{" "}
+                  {taxSettings.micro_allowance_percent}% = base{" "}
+                  {formatMoney(bilan.tax.taxableBase)} ×{" "}
+                  {taxSettings.flat_rate_percent}% IR. Indépendant du cash /
+                  pertes.
+                </p>
+              ) : bilan.hasAmortConfig ? (
                 <p className="mt-1 text-xs text-ink-300">
                   Base : cash − amortissement (mode réel / taux).
                 </p>
