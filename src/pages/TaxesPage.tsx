@@ -5,8 +5,13 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { useRentals } from "@/hooks/useRentals";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { formatMoney, toNumber } from "@/lib/money";
-import { DEFAULT_TAX_MODE, TAX_MODE_LABELS } from "@/lib/taxEstimate";
+import {
+  DEFAULT_SOCIAL_RATE_PERCENT,
+  DEFAULT_TAX_MODE,
+  TAX_MODE_LABELS,
+} from "@/lib/taxEstimate";
 import type { TaxMode } from "@/integrations/supabase/types";
+import { siteConfig } from "@/config/site";
 
 export function TaxesPage() {
   const { vehicle, taxSettings, updateTaxSettings } = useWorkspace();
@@ -16,6 +21,9 @@ export function TaxesPage() {
 
   const [mode, setMode] = useState<TaxMode>(DEFAULT_TAX_MODE);
   const [rate, setRate] = useState("30");
+  const [socialRate, setSocialRate] = useState(
+    String(siteConfig.defaultSocialRatePercent),
+  );
   const [allowance, setAllowance] = useState("50");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +32,9 @@ export function TaxesPage() {
     if (!taxSettings) return;
     setMode(taxSettings.mode);
     setRate(String(taxSettings.flat_rate_percent));
+    setSocialRate(
+      String(taxSettings.social_rate_percent ?? DEFAULT_SOCIAL_RATE_PERCENT),
+    );
     setAllowance(String(taxSettings.micro_allowance_percent));
   }, [taxSettings]);
 
@@ -35,6 +46,7 @@ export function TaxesPage() {
       await updateTaxSettings.mutateAsync({
         mode,
         flat_rate_percent: toNumber(rate),
+        social_rate_percent: toNumber(socialRate),
         micro_allowance_percent: toNumber(allowance),
       });
       setMessage("Paramètres enregistrés.");
@@ -44,6 +56,9 @@ export function TaxesPage() {
   }
 
   const isMicro = (taxSettings?.mode ?? mode) === "micro_bic_like";
+  const socialPct =
+    taxSettings?.social_rate_percent ?? DEFAULT_SOCIAL_RATE_PERCENT;
+  const irPct = taxSettings?.flat_rate_percent ?? 30;
 
   return (
     <div className="space-y-4">
@@ -52,7 +67,8 @@ export function TaxesPage() {
       <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
         Estimation indicative uniquement. Ne remplace pas un expert-comptable
         ni impots.gouv. En micro, l’impôt part du <strong>CA</strong> même si
-        ton cash est négatif.
+        ton cash est négatif. Sous le seuil URSSAF, tu as en général{" "}
+        <strong>IR + prélèvements sociaux</strong> sur la même base.
       </p>
 
       <section className="rounded-2xl bg-white/90 p-4 shadow-soft ring-1 ring-ink-100">
@@ -98,16 +114,28 @@ export function TaxesPage() {
             </div>
           )}
           <div>
-            <dt className="text-ink-500">
-              Impôt estimé (× {taxSettings?.flat_rate_percent ?? 30}% IR)
-            </dt>
+            <dt className="text-ink-500">IR estimé (× {irPct}%)</dt>
             <dd className="font-display text-xl text-warn">
-              {formatMoney(bilan.tax?.estimatedTax ?? 0)}
+              {formatMoney(bilan.tax?.incomeTax ?? 0)}
             </dd>
           </div>
           <div>
-            <dt className="text-ink-500">Net après impôt approx.</dt>
-            <dd className="font-display text-xl text-accent-dark">
+            <dt className="text-ink-500">
+              Prélèvements sociaux (× {socialPct}%)
+            </dt>
+            <dd className="font-display text-xl text-warn">
+              {formatMoney(bilan.tax?.socialContributions ?? 0)}
+            </dd>
+          </div>
+          <div className="col-span-2 rounded-xl bg-ink-50 p-3">
+            <dt className="text-ink-500">Total à prévoir (IR + PS)</dt>
+            <dd className="font-display text-2xl text-warn">
+              {formatMoney(bilan.tax?.estimatedTax ?? 0)}
+            </dd>
+          </div>
+          <div className="col-span-2 rounded-xl bg-accent-soft/60 p-3">
+            <dt className="text-ink-600">Super net (cash − IR − PS)</dt>
+            <dd className="font-display text-2xl text-accent-dark">
               {formatMoney(bilan.tax?.netAfterTax ?? 0)}
             </dd>
           </div>
@@ -116,11 +144,12 @@ export function TaxesPage() {
           <p className="mt-3 rounded-xl bg-ink-50 p-3 text-xs text-ink-600">
             Formule micro :{" "}
             <span className="font-medium text-ink-800">
-              CA × (1 − {taxSettings?.micro_allowance_percent ?? 50}%) ×{" "}
-              {taxSettings?.flat_rate_percent ?? 30}%
+              CA × (1 − {taxSettings?.micro_allowance_percent ?? 50}%) × (
+              {irPct}% IR + {socialPct}% PS)
             </span>
             . Les dépenses, abonnements et amortissement n’entrent pas dans
-            cette base (déjà couverts par l’abattement forfaitaire).
+            cette base (déjà couverts par l’abattement forfaitaire). Au-delà du
+            seuil URSSAF, les cotisations remplacent en général les PS.
           </p>
         ) : null}
       </section>
@@ -160,6 +189,27 @@ export function TaxesPage() {
             onChange={(e) => setRate(e.target.value)}
             className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2"
           />
+        </div>
+        <div>
+          <label
+            htmlFor="socialRate"
+            className="text-sm font-medium text-ink-800"
+          >
+            Prélèvements sociaux (%)
+          </label>
+          <input
+            id="socialRate"
+            type="number"
+            step="0.1"
+            min="0"
+            max="100"
+            value={socialRate}
+            onChange={(e) => setSocialRate(e.target.value)}
+            className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2"
+          />
+          <p className="mt-1 text-xs text-ink-500">
+            Défaut 17,2 % (CSG / CRDS / solidarité). Ajuste si le taux évolue.
+          </p>
         </div>
         {mode === "micro_bic_like" ? (
           <div>

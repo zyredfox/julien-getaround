@@ -27,8 +27,10 @@ export function dateToMonthInput(isoDate: string): string {
 }
 
 /**
- * Déplie les abonnements en une occurrence par mois
- * (du mois de début jusqu'à repeat_until, ou jusqu'au mois courant si ouvert).
+ * Déplie les abonnements en une occurrence par mois.
+ * - Fin connue (`repeat_until`) : jusqu'à ce mois inclus.
+ * - Ouvert : projeté jusqu'à la fin de la période du bilan (comme l'amortissement),
+ *   ou jusqu'au mois courant si la période n'a pas de borne (`Tout`).
  */
 export function expandExpensesForPeriod(
   expenses: Expense[],
@@ -37,7 +39,9 @@ export function expandExpensesForPeriod(
   now = new Date(),
 ): ExpenseOccurrence[] {
   const occurrences: ExpenseOccurrence[] = [];
-  const openEndedCap = startOfMonth(now);
+  const openEndedCap = periodTo
+    ? startOfMonth(parseISO(periodTo))
+    : startOfMonth(now);
 
   for (const expense of expenses) {
     if (!expense.is_recurring) {
@@ -48,7 +52,6 @@ export function expandExpensesForPeriod(
     }
 
     const start = startOfMonth(parseISO(expense.spent_on));
-    // Fin connue = jusqu'à ce mois inclus ; sinon = en cours jusqu'au mois actuel
     const hardEnd = expense.repeat_until
       ? startOfMonth(parseISO(expense.repeat_until))
       : openEndedCap;
@@ -69,7 +72,7 @@ export function expandExpensesForPeriod(
 export function formatSubscriptionLabel(expense: Expense): string {
   const from = format(parseISO(expense.spent_on), "MM/yyyy");
   if (!expense.repeat_until) {
-    return `Abonnement depuis ${from}`;
+    return `Abonnement depuis ${from} (prévu en cours)`;
   }
   const to = format(parseISO(expense.repeat_until), "MM/yyyy");
   return `Abonnement ${from} → ${to}`;

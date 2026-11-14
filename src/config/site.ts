@@ -4,6 +4,7 @@ export const siteConfig = {
   url: "https://julien-getaround.netlify.app",
   themeColor: "#0f1c2e",
   defaultTaxRatePercent: 30,
+  defaultSocialRatePercent: 17.2,
   robots: "noindex, nofollow",
 } as const;
 

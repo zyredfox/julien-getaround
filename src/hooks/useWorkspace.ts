@@ -80,6 +80,7 @@ async function ensureWorkspace(userId: string): Promise<{
         mode: DEFAULT_TAX_MODE,
         flat_rate_percent: siteConfig.defaultTaxRatePercent,
         micro_allowance_percent: 50,
+        social_rate_percent: siteConfig.defaultSocialRatePercent,
       })
       .select("*")
       .single();
@@ -128,7 +129,11 @@ export function useWorkspace() {
       patch: Partial<
         Pick<
           TaxSettings,
-          "mode" | "flat_rate_percent" | "micro_allowance_percent" | "notes"
+          | "mode"
+          | "flat_rate_percent"
+          | "micro_allowance_percent"
+          | "social_rate_percent"
+          | "notes"
         >
       >,
     ) => {

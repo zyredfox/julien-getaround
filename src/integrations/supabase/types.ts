@@ -66,6 +66,8 @@ export type TaxSettings = {
   mode: TaxMode;
   flat_rate_percent: number;
   micro_allowance_percent: number;
+  /** Prélèvements sociaux (ex. 17,2 %). */
+  social_rate_percent: number;
   notes: string | null;
   created_at: string;
 };
@@ -149,6 +151,7 @@ export type Database = {
           mode?: TaxMode;
           flat_rate_percent?: number;
           micro_allowance_percent?: number;
+          social_rate_percent?: number;
           notes?: string | null;
           created_at?: string;
         }

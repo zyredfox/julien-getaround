@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Car,
   Landmark,
+  PiggyBank,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -67,6 +68,7 @@ export function BilanPage() {
           className="anim-fade-up anim-delay-2"
           label="Dépenses cash"
           value={formatMoney(bilan.totalExpenses)}
+          hint="abos projetés sur la période"
           icon={TrendingDown}
           tone="negative"
         />
@@ -88,6 +90,80 @@ export function BilanPage() {
         />
       </div>
 
+      {bilan.tax ? (
+        <section className="anim-fade-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-ink-900 via-ink-800 to-accent-dark p-5 text-white shadow-lift">
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-accent-soft">
+                Super net (après IR + PS)
+              </p>
+              <p
+                className={`mt-1 font-display text-3xl tracking-tight ${
+                  bilan.tax.netAfterTax >= 0
+                    ? "text-accent-bright"
+                    : "text-signal-soft"
+                }`}
+              >
+                {formatMoney(bilan.tax.netAfterTax)}
+              </p>
+              <p className="mt-2 text-sm text-ink-300">
+                Cash net {formatMoney(bilan.cashNet)} − impôts{" "}
+                {formatMoney(bilan.tax.estimatedTax)}
+              </p>
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <dt className="text-ink-300">IR</dt>
+                  <dd className="mt-0.5 font-semibold text-white">
+                    {formatMoney(bilan.tax.incomeTax)}
+                  </dd>
+                </div>
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <dt className="text-ink-300">PS</dt>
+                  <dd className="mt-0.5 font-semibold text-white">
+                    {formatMoney(bilan.tax.socialContributions)}
+                  </dd>
+                </div>
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <dt className="text-ink-300">Total impôts</dt>
+                  <dd className="mt-0.5 font-semibold text-white">
+                    {formatMoney(bilan.tax.estimatedTax)}
+                  </dd>
+                </div>
+              </dl>
+              {taxSettings?.mode === "micro_bic_like" ? (
+                <p className="mt-3 text-xs leading-relaxed text-ink-300">
+                  Impôts calculés sur le CA micro (
+                  {formatMoney(bilan.tax.ca)} −{" "}
+                  {taxSettings.micro_allowance_percent}% ={" "}
+                  {formatMoney(bilan.tax.taxableBase)} ×{" "}
+                  {taxSettings.flat_rate_percent}% +{" "}
+                  {taxSettings.social_rate_percent ?? 17.2}%), pas sur le cash.
+                </p>
+              ) : null}
+            </div>
+            <Link
+              to="/impots"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border-2 border-white/80 bg-white px-3 py-2 text-sm font-semibold text-ink-900 hover:bg-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Paramètres
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          </div>
+          <p className="relative mt-3 text-xs text-ink-300">
+            Estimation indicative — ne remplace pas un expert-comptable /
+            impots.gouv.
+          </p>
+        </section>
+      ) : (
+        <KpiCard
+          label="Super net (après impôts)"
+          value="—"
+          hint="Configure les paramètres fiscaux"
+          icon={PiggyBank}
+          tone="default"
+        />
+      )}
+
       {bilan.hasAmortConfig ? (
         <div className="grid grid-cols-2 gap-3">
           <KpiCard
@@ -104,7 +180,7 @@ export function BilanPage() {
           <KpiCard
             label="Net économique"
             value={formatMoney(bilan.economicNet)}
-            hint="cash − amortissement"
+            hint="cash − amortissement (hors impôts)"
             icon={TrendingDown}
             tone={bilan.economicNet >= 0 ? "positive" : "negative"}
           />
@@ -118,46 +194,6 @@ export function BilanPage() {
           et la durée (mois) sur la fiche véhicule pour l’inclure au bilan.
         </section>
       )}
-
-      {bilan.tax ? (
-        <section className="anim-fade-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-ink-900 via-ink-800 to-accent-dark p-5 text-white shadow-lift">
-          <div className="relative flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm text-accent-soft">Estimation d’impôt</p>
-              <p className="mt-1 font-display text-3xl tracking-tight">
-                {formatMoney(bilan.tax.estimatedTax)}
-              </p>
-              <p className="mt-1 text-sm text-ink-300">
-                Net après impôt approx. {formatMoney(bilan.tax.netAfterTax)}
-              </p>
-              {taxSettings?.mode === "micro_bic_like" ? (
-                <p className="mt-2 text-xs leading-relaxed text-ink-300">
-                  Micro : CA {formatMoney(bilan.tax.ca)} − abattement{" "}
-                  {taxSettings.micro_allowance_percent}% = base{" "}
-                  {formatMoney(bilan.tax.taxableBase)} ×{" "}
-                  {taxSettings.flat_rate_percent}% IR. Indépendant du cash /
-                  pertes.
-                </p>
-              ) : bilan.hasAmortConfig ? (
-                <p className="mt-1 text-xs text-ink-300">
-                  Base : cash − amortissement (mode réel / taux).
-                </p>
-              ) : null}
-            </div>
-            <Link
-              to="/impots"
-              className="inline-flex min-h-11 items-center gap-1 rounded-xl border-2 border-white/80 bg-white px-3 py-2 text-sm font-semibold text-ink-900 hover:bg-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Paramètres
-              <ArrowRight className="size-4" aria-hidden />
-            </Link>
-          </div>
-          <p className="relative mt-3 text-xs text-ink-300">
-            Estimation indicative — ne remplace pas un expert-comptable /
-            impots.gouv.
-          </p>
-        </section>
-      ) : null}
 
       {isEmpty ? (
         <section className="anim-fade-up rounded-3xl border border-dashed border-accent/40 bg-white/80 p-5 shadow-soft">
