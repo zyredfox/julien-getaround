@@ -4,7 +4,12 @@ import { Copy, Pencil, Search, Trash2, X } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { useRentals } from "@/hooks/useRentals";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { formatMoney, toNumber } from "@/lib/money";
+import {
+  feesFromGrossNet,
+  formatAmountInput,
+  formatMoney,
+  toNumber,
+} from "@/lib/money";
 import type { Rental } from "@/integrations/supabase/types";
 
 const emptyForm = {
@@ -15,6 +20,19 @@ const emptyForm = {
   net_amount: "",
   notes: "",
 };
+
+function withAutoFees(
+  patch: Partial<typeof emptyForm>,
+  current: typeof emptyForm,
+): typeof emptyForm {
+  const next = { ...current, ...patch };
+  const fees = feesFromGrossNet(next.gross_amount, next.net_amount);
+  next.platform_fees =
+    next.gross_amount === "" && next.net_amount === ""
+      ? ""
+      : formatAmountInput(fees);
+  return next;
+}
 
 const emptyFilters = {
   query: "",
@@ -119,13 +137,15 @@ export function RentalsPage() {
       return;
     }
 
+    const gross = toNumber(form.gross_amount);
+    const net = toNumber(form.net_amount);
     const payload = {
       vehicle_id: vehicle.id,
       start_at: form.start_at,
       end_at: form.end_at,
-      gross_amount: toNumber(form.gross_amount),
-      platform_fees: toNumber(form.platform_fees),
-      net_amount: toNumber(form.net_amount),
+      gross_amount: gross,
+      platform_fees: feesFromGrossNet(gross, net),
+      net_amount: net,
       notes: form.notes.trim() || null,
     };
 
@@ -354,30 +374,32 @@ export function RentalsPage() {
                 inputMode="decimal"
                 value={form.gross_amount}
                 onChange={(value) =>
-                  setForm((f) => ({ ...f, gross_amount: value }))
+                  setForm((f) => withAutoFees({ gross_amount: value }, f))
                 }
                 required
-              />
-              <Field
-                id="platform_fees"
-                label="Frais Getaround (€)"
-                type="number"
-                inputMode="decimal"
-                value={form.platform_fees}
-                onChange={(value) =>
-                  setForm((f) => ({ ...f, platform_fees: value }))
-                }
+                hint="Sur Getaround : prix de la location (ex. 91 €). Base micro / impôts."
               />
               <Field
                 id="net_amount"
-                label="Net perçu (€)"
+                label="Vos revenus (€)"
                 type="number"
                 inputMode="decimal"
                 value={form.net_amount}
                 onChange={(value) =>
-                  setForm((f) => ({ ...f, net_amount: value }))
+                  setForm((f) => withAutoFees({ net_amount: value }, f))
                 }
                 required
+                hint="Sur Getaround : « Vos revenus » (ex. 76,61 €). Cash réellement perçu."
+              />
+              <Field
+                id="platform_fees"
+                label="Frais / écart (€)"
+                type="number"
+                inputMode="decimal"
+                value={form.platform_fees}
+                onChange={() => undefined}
+                readOnly
+                hint="Calculé auto : brut − revenus (commission + carburant, etc.)."
               />
               <Field
                 id="notes"
@@ -418,6 +440,8 @@ function Field({
   type = "text",
   required,
   inputMode,
+  hint,
+  readOnly,
 }: {
   id: string;
   label: string;
@@ -426,6 +450,8 @@ function Field({
   type?: string;
   required?: boolean;
   inputMode?: "decimal";
+  hint?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div>
@@ -437,11 +463,20 @@ function Field({
         type={type}
         inputMode={inputMode}
         required={required}
+        readOnly={readOnly}
+        tabIndex={readOnly ? -1 : undefined}
         step={type === "number" ? "0.01" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-50"
+        className={
+          readOnly
+            ? "mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-100/80 px-3 text-ink-800 outline-none dark:border-ink-700 dark:bg-ink-950 dark:text-ink-200"
+            : "mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-50"
+        }
       />
+      {hint ? (
+        <p className="mt-1 text-xs text-ink-500 dark:text-ink-300">{hint}</p>
+      ) : null}
     </div>
   );
 }

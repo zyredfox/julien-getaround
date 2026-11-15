@@ -14,3 +14,18 @@ export function toNumber(value: string | number | null | undefined): number {
   const parsed = Number(String(value).replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
 }
+
+/** Frais Getaround (commission + ajustements) = brut − net, arrondi à 2 décimales. */
+export function feesFromGrossNet(
+  gross: string | number,
+  net: string | number,
+): number {
+  const fees = toNumber(gross) - toNumber(net);
+  if (!Number.isFinite(fees)) return 0;
+  return Math.round(Math.max(fees, 0) * 100) / 100;
+}
+
+export function formatAmountInput(value: number): string {
+  if (!Number.isFinite(value) || value === 0) return value === 0 ? "0" : "";
+  return String(value);
+}
