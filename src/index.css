@@ -23,6 +23,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html[data-density="compact"] .app-main {
+  padding-top: 0.75rem;
+  padding-bottom: 5.5rem;
+}
+
+@media (min-width: 768px) {
+  html[data-density="compact"] .app-main {
+    padding-bottom: 1.5rem;
+  }
+}
+
+html[data-density="compact"] .list-row {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+
 .sl-sr-only {
   position: absolute;
   width: 1px;
@@ -38,10 +54,94 @@ body {
 .app-shell {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(ellipse 90% 55% at 10% -10%, rgba(18, 196, 176, 0.35), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 100% 0%, rgba(255, 107, 61, 0.22), transparent 50%),
+  background-color: #f3f7fb;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 10% -10%, rgba(18, 196, 176, 0.28), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 100% 0%, rgba(255, 107, 61, 0.16), transparent 50%),
     linear-gradient(165deg, #eef8f7 0%, #f3f7fb 42%, #e8eef6 100%);
+}
+
+/* Garde-fou thème clair : fond page clair, sans remap global des textes */
+html:not(.dark) .app-shell {
+  background-color: #f3f7fb;
+  color: #0f1c2e;
+}
+
+html:not(.dark) .app-shell,
+html:not(.dark) .app-main {
+  color: #0f1c2e;
+}
+
+/* Titres de page uniquement (pas tous les h1/h2 dans des surfaces inverses) */
+html:not(.dark) .app-main .page-title {
+  color: #0f1c2e !important;
+}
+
+/* Surfaces inverses (header, login) : texte clair préservé en thème clair */
+html:not(.dark) .surface-inverse {
+  color: #ffffff;
+}
+
+html:not(.dark) .surface-inverse .text-ink-300 {
+  color: #c5d4e4 !important;
+}
+
+html:not(.dark) .surface-inverse .text-accent-bright {
+  color: #5eead4 !important;
+}
+
+html:not(.dark) .surface-inverse .text-white {
+  color: #ffffff !important;
+}
+
+html:not(.dark) .surface-inverse a,
+html:not(.dark) .surface-inverse button {
+  color: inherit;
+}
+
+/* Panneaux de contenu — blanc en clair, sombre en dark */
+html:not(.dark) .panel {
+  background-color: #ffffff;
+  color: #0f1c2e;
+}
+
+html:not(.dark) .kpi-card {
+  background-color: #ffffff !important;
+  color: #0f1c2e;
+}
+
+html:not(.dark) .kpi-card .text-ink-800,
+html:not(.dark) .kpi-card .text-ink-900 {
+  color: #1a2f4a !important;
+}
+
+html:not(.dark) .kpi-card .text-ink-600,
+html:not(.dark) .kpi-card .text-ink-500 {
+  color: #2a4466 !important;
+}
+
+html:not(.dark) .list-row {
+  background-color: #ffffff !important;
+  color: #0f1c2e;
+}
+
+html:not(.dark) .list-row .text-ink-900,
+html:not(.dark) .list-row .text-ink-800,
+html:not(.dark) .list-row .text-ink-700 {
+  color: #0f1c2e !important;
+}
+
+html:not(.dark) .list-row .text-ink-500,
+html:not(.dark) .list-row .text-ink-600 {
+  color: #2a4466 !important;
+}
+
+html:not(.dark) .list-row button {
+  color: #1a2f4a !important;
+}
+
+html:not(.dark) .list-row button[aria-label*="Supprimer"] {
+  color: #b91c1c !important;
 }
 
 .app-shell::before {
@@ -205,4 +305,314 @@ body {
 
 .btn-signal:focus-visible {
   outline-color: #ff6b3d;
+}
+
+/* ——— Mode sombre (après les styles light, contraste AA) ——— */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body,
+html.dark #root {
+  background: #071018;
+  color: #eef3f8;
+}
+
+html.dark .app-shell {
+  background-color: #071018 !important;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 10% -10%, rgba(18, 196, 176, 0.16), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 100% 0%, rgba(255, 107, 61, 0.1), transparent 50%),
+    linear-gradient(165deg, #071018 0%, #0c1828 45%, #102033 100%) !important;
+  color: #eef3f8;
+}
+
+html.dark .kpi-card {
+  background-color: #1a3048 !important;
+  color: #f5f8fb;
+}
+
+html.dark .kpi-card .text-ink-800,
+html.dark .kpi-card .text-ink-100,
+html.dark .kpi-card .text-ink-900 {
+  color: #f5f8fb !important;
+}
+
+html.dark .kpi-card .text-ink-600,
+html.dark .kpi-card .text-ink-300,
+html.dark .kpi-card .text-ink-500 {
+  color: #c5d4e4 !important;
+}
+
+html.dark .app-shell::before {
+  opacity: 0.18;
+  background-image: repeating-linear-gradient(
+    -18deg,
+    transparent,
+    transparent 14px,
+    rgba(238, 243, 248, 0.045) 14px,
+    rgba(238, 243, 248, 0.045) 15px
+  );
+}
+
+html.dark .btn-secondary {
+  border-color: #9eb2c9;
+  background: #132337;
+  color: #eef3f8;
+}
+
+html.dark .btn-secondary:hover {
+  background: #1a2f4a;
+}
+
+html.dark .btn-danger {
+  border-color: #f87171;
+  background: rgba(127, 29, 29, 0.45);
+  color: #fecaca;
+}
+
+/* Cartes / surfaces claires → panneaux sombres lisibles */
+html.dark .app-main .bg-white,
+html.dark .app-main .bg-white\/90,
+html.dark .app-main .bg-white\/95,
+html.dark .app-main .bg-white\/80,
+html.dark .app-main .bg-white\/70 {
+  background-color: #132337 !important;
+  color: #eef3f8;
+}
+
+html.dark .app-main .bg-ink-50,
+html.dark .app-main .bg-ink-50\/80 {
+  background-color: #0c1828 !important;
+  color: #eef3f8;
+}
+
+html.dark .list-row {
+  background-color: #1a3048 !important;
+  color: #f5f8fb !important;
+  box-shadow: none;
+}
+
+/* Force la lisibilité même si des utilitaires text-ink-* restent sombres */
+html.dark .list-row .text-ink-900,
+html.dark .list-row .text-ink-800,
+html.dark .list-row .text-ink-700,
+html.dark .list-row .text-ink-600,
+html.dark .list-row .text-ink-500,
+html.dark .list-row .text-accent-dark {
+  color: #f5f8fb !important;
+}
+
+html.dark .list-row .text-ink-500,
+html.dark .list-row .text-xs {
+  color: #c5d4e4 !important;
+}
+
+html.dark .list-row button {
+  color: #e8eef6;
+}
+
+html.dark .list-row button:hover {
+  background-color: rgba(238, 243, 248, 0.08);
+}
+
+html.dark .list-row button[aria-label*="Supprimer"] {
+  color: #fca5a5;
+}
+
+html.dark .list-row button[aria-label*="Supprimer"]:hover {
+  background-color: rgba(127, 29, 29, 0.35);
+}
+
+/* Titres de page en dark */
+html.dark .app-main .page-title,
+html.dark .app-main h1,
+html.dark .app-main h2 {
+  color: #f5f8fb;
+}
+
+html.dark .panel {
+  background-color: #132337 !important;
+  color: #eef3f8;
+}
+
+/* Remap textes ink sombres dans le contenu (hors chrome inverse) */
+html.dark .app-main .text-ink-950,
+html.dark .app-main .text-ink-900,
+html.dark .app-main .text-ink-800,
+html.dark .app-main .text-ink-700 {
+  color: #f3f7fb !important;
+}
+
+html.dark .app-main .text-ink-600,
+html.dark .app-main .text-ink-500 {
+  color: #c5d4e4 !important;
+}
+
+html.dark .app-main .text-accent-dark {
+  color: #5eead4 !important;
+}
+
+html.dark .app-main .text-warn {
+  color: #fdba74 !important;
+}
+
+/* Chrome sombre (header) : texte clair même en dark */
+html.dark .surface-inverse .text-ink-300 {
+  color: #c5d4e4 !important;
+}
+
+html.dark .surface-inverse .text-white {
+  color: #ffffff !important;
+}
+
+html.dark .app-main .border-ink-100,
+html.dark .app-main .border-ink-200,
+html.dark .app-main .border-ink-300 {
+  border-color: #3a5473 !important;
+}
+
+html.dark .app-main .bg-accent-soft,
+html.dark .app-main .bg-accent-soft\/60,
+html.dark .app-main .bg-accent-soft\/80 {
+  background-color: rgba(15, 159, 149, 0.22) !important;
+  color: #e6fffb;
+}
+
+html.dark .app-main .bg-signal-soft,
+html.dark .app-main .bg-signal-soft\/90 {
+  background-color: rgba(255, 107, 61, 0.2) !important;
+}
+
+html.dark .app-main .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.45) !important;
+  border-color: #d97706 !important;
+  color: #ffedd5 !important;
+}
+
+html.dark .app-main .text-amber-950 {
+  color: #ffedd5 !important;
+}
+
+html.dark .app-main .font-display {
+  color: inherit;
+}
+
+/* Inputs : forcer clair / sombre selon le thème (évite les champs noirs en light) */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
+  color-scheme: light !important;
+  color: #0f1c2e !important;
+  background-color: #f3f7fb !important;
+  border-color: #c5d4e4 !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #5b7394 !important;
+}
+
+html:not(.dark) .filter-panel {
+  background-color: #ffffff !important;
+  color: #0f1c2e !important;
+}
+
+html:not(.dark) .filter-panel .filter-label {
+  color: #1a2f4a !important;
+}
+
+html:not(.dark) .filter-panel .filter-input {
+  background-color: #f3f7fb !important;
+  color: #0f1c2e !important;
+  border-color: #c5d4e4 !important;
+  color-scheme: light !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color-scheme: dark !important;
+  color: #f5f8fb !important;
+  background-color: #0a1522 !important;
+  border-color: #3a5473 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #9eb2c9;
+}
+
+html.dark label {
+  color: #d0dbe8 !important;
+}
+
+html.dark .filter-panel {
+  background-color: #1a3048 !important;
+  color: #f5f8fb !important;
+}
+
+html.dark .filter-panel .filter-input {
+  background-color: #0a1522 !important;
+  color: #f5f8fb !important;
+  border-color: #3a5473 !important;
+}
+
+html.dark .ring-ink-100,
+html.dark .ring-ink-100\/80,
+html.dark .ring-ink-200 {
+  --tw-ring-color: rgba(90, 120, 150, 0.55);
+}
+
+/* Panneaux graphiques — thème clair net */
+html:not(.dark) .chart-panel {
+  background-color: #ffffff !important;
+  color: #0f1c2e !important;
+  box-shadow: 0 10px 28px rgba(7, 16, 24, 0.08);
+}
+
+html:not(.dark) .chart-panel h2 {
+  color: #0f1c2e !important;
+}
+
+html:not(.dark) .chart-panel .chart-legend,
+html:not(.dark) .chart-panel .chart-legend span {
+  color: #0f1c2e !important;
+}
+
+html:not(.dark) .chart-tooltip {
+  background: #ffffff !important;
+  border-color: #c5d4e4 !important;
+  color: #0f1c2e !important;
+}
+
+/* Panneaux graphiques — thème sombre */
+html.dark .chart-panel {
+  background-color: #1a3048 !important;
+  color: #f5f8fb !important;
+}
+
+html.dark .chart-panel h2 {
+  color: #f5f8fb !important;
+}
+
+html.dark .chart-panel .chart-legend,
+html.dark .chart-panel .chart-legend span {
+  color: #f5f8fb !important;
+}
+
+html.dark .chart-tooltip {
+  background: #132337 !important;
+  border-color: #3a5473 !important;
+  color: #f5f8fb !important;
+}
+
+html.dark .chart-tooltip .text-ink-900,
+html.dark .chart-tooltip .text-ink-800 {
+  color: #f5f8fb !important;
+}
+
+html.dark .chart-tooltip .text-ink-600,
+html.dark .chart-tooltip .text-ink-500 {
+  color: #c5d4e4 !important;
 }

@@ -72,8 +72,8 @@ export function expandExpensesForPeriod(
 export function formatSubscriptionLabel(expense: Expense): string {
   const from = format(parseISO(expense.spent_on), "MM/yyyy");
   if (!expense.repeat_until) {
-    return `Abonnement depuis ${from} (prévu en cours)`;
+    return `Mensualité depuis ${from} (prévu en cours)`;
   }
   const to = format(parseISO(expense.repeat_until), "MM/yyyy");
-  return `Abonnement ${from} → ${to}`;
+  return `Mensualité ${from} → ${to}`;
 }

@@ -44,8 +44,8 @@ export function LoginPage() {
   return (
     <div className="app-shell grid min-h-dvh place-items-center px-4">
       <Seo title="Connexion" />
-      <div className="anim-fade-up w-full max-w-md overflow-hidden rounded-3xl bg-white/95 shadow-lift ring-1 ring-ink-100">
-        <div className="relative bg-ink-950 px-6 py-7 text-white">
+      <div className="anim-fade-up w-full max-w-md overflow-hidden rounded-3xl bg-white/95 shadow-lift ring-1 ring-ink-100 dark:bg-ink-900 dark:ring-ink-700">
+        <div className="surface-inverse relative bg-ink-950 px-6 py-7 text-white">
           <div
             className="pointer-events-none absolute -right-6 -top-8 size-36 rounded-full bg-accent/40 blur-2xl"
             aria-hidden
@@ -59,7 +59,7 @@ export function LoginPage() {
               <Car className="size-5" />
             </div>
             <div>
-              <p className="font-display text-3xl tracking-tight">
+              <p className="font-display text-3xl tracking-tight text-white">
                 {siteConfig.siteName}
               </p>
               <p className="mt-1 text-sm text-ink-300">{siteConfig.siteTagline}</p>

@@ -10,7 +10,12 @@ import type {
 import { expandAmortizationForPeriod, monthlyAmortAmount } from "@/lib/amortization";
 import { categoryLabel } from "@/lib/categories";
 import { expandExpensesForPeriod } from "@/lib/expandExpenses";
-import { inRange, type PeriodKey, resolvePeriod } from "@/lib/period";
+import {
+  inRange,
+  resolvePeriod,
+  type PeriodMode,
+  type PeriodSelection,
+} from "@/lib/period";
 import { estimateTax } from "@/lib/taxEstimate";
 
 export type MonthDetailLine = {
@@ -73,11 +78,11 @@ export function useBilan(
   rentals: Rental[] | undefined,
   expenses: Expense[] | undefined,
   taxSettings: TaxSettings | undefined,
-  periodKey: PeriodKey,
+  periodSelection: PeriodSelection | PeriodMode,
   vehicle?: Vehicle,
 ) {
   return useMemo(() => {
-    const period = resolvePeriod(periodKey);
+    const period = resolvePeriod(periodSelection);
     const filteredRentals = (rentals ?? []).filter((rental) =>
       inRange(rental.start_at, period.from, period.to),
     );
@@ -156,12 +161,14 @@ export function useBilan(
       const bucket = bucketFor(expense.occurrence_on);
       const amount = Number(expense.amount);
       bucket.depenses += amount;
-      const base = categoryLabel(expense.category);
-      const label = expense.notes?.trim()
-        ? `${base} — ${expense.notes.trim()}`
+      const title = expense.notes?.trim();
+      const label = title
+        ? expense.is_recurring
+          ? `${title} (mensualité)`
+          : title
         : expense.is_recurring
-          ? `${base} (abo)`
-          : base;
+          ? `${categoryLabel(expense.category)} (mensualité)`
+          : categoryLabel(expense.category);
       addDetail(bucket.depenseDetails, label, amount);
     }
 
@@ -234,5 +241,5 @@ export function useBilan(
       byCategory,
       hasAmortConfig: monthlyAmort != null,
     };
-  }, [rentals, expenses, taxSettings, periodKey, vehicle]);
+  }, [rentals, expenses, taxSettings, periodSelection, vehicle]);
 }

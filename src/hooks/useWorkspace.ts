@@ -5,8 +5,34 @@ import type { TaxSettings, Vehicle } from "@/integrations/supabase/types";
 import { siteConfig } from "@/config/site";
 import { DEFAULT_TAX_MODE } from "@/lib/taxEstimate";
 
+function activeVehicleStorageKey(userId: string) {
+  return `julien-getaround:active-vehicle:${userId}`;
+}
+
+function readStoredVehicleId(userId: string): string | null {
+  try {
+    return localStorage.getItem(activeVehicleStorageKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredVehicleId(userId: string, vehicleId: string) {
+  try {
+    localStorage.setItem(activeVehicleStorageKey(userId), vehicleId);
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function pickActiveVehicle(vehicles: Vehicle[], userId: string): Vehicle {
+  const stored = readStoredVehicleId(userId);
+  return vehicles.find((item) => item.id === stored) ?? vehicles[0];
+}
+
 async function ensureWorkspace(userId: string): Promise<{
   spaceId: string;
+  vehicles: Vehicle[];
   vehicle: Vehicle;
   taxSettings: TaxSettings;
 }> {
@@ -35,18 +61,18 @@ async function ensureWorkspace(userId: string): Promise<{
     spaceId = createdSpace.id;
   }
 
-  const { data: vehicles, error: vehiclesError } = await supabase
+  const { data: vehicleRows, error: vehiclesError } = await supabase
     .from("vehicles")
     .select("*")
     .eq("owner_id", userId)
     .eq("space_id", spaceId)
-    .limit(1);
+    .order("created_at", { ascending: true });
 
   if (vehiclesError) throw vehiclesError;
 
-  let vehicle = vehicles?.[0] as Vehicle | undefined;
+  let vehicles = (vehicleRows ?? []) as Vehicle[];
 
-  if (!vehicle) {
+  if (vehicles.length === 0) {
     const { data: createdVehicle, error } = await supabase
       .from("vehicles")
       .insert({
@@ -57,8 +83,11 @@ async function ensureWorkspace(userId: string): Promise<{
       .select("*")
       .single();
     if (error) throw error;
-    vehicle = createdVehicle;
+    vehicles = [createdVehicle];
   }
+
+  const vehicle = pickActiveVehicle(vehicles, userId);
+  writeStoredVehicleId(userId, vehicle.id);
 
   const { data: taxRows, error: taxError } = await supabase
     .from("tax_settings")
@@ -88,8 +117,17 @@ async function ensureWorkspace(userId: string): Promise<{
     taxSettings = createdTax;
   }
 
-  return { spaceId, vehicle, taxSettings };
+  return { spaceId, vehicles, vehicle, taxSettings };
 }
+
+export type VehicleInput = {
+  label: string;
+  plate?: string | null;
+  make_model?: string | null;
+  acquisition_cost?: number | null;
+  acquisition_on?: string | null;
+  amort_months?: number | null;
+};
 
 export function useWorkspace() {
   const { user } = useAuth();
@@ -104,20 +142,64 @@ export function useWorkspace() {
     },
   });
 
-  const updateVehicle = useMutation({
-    mutationFn: async (patch: Partial<Vehicle>) => {
-      if (!query.data?.vehicle.id || !user?.id) {
-        throw new Error("Véhicule introuvable");
+  const setActiveVehicle = useMutation({
+    mutationFn: async (vehicleId: string) => {
+      if (!user?.id || !query.data) {
+        throw new Error("Espace introuvable");
+      }
+      const found = query.data.vehicles.find((item) => item.id === vehicleId);
+      if (!found) throw new Error("Véhicule introuvable");
+      writeStoredVehicleId(user.id, vehicleId);
+      return found;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["workspace", user?.id] });
+    },
+  });
+
+  const createVehicle = useMutation({
+    mutationFn: async (input: VehicleInput) => {
+      if (!user?.id || !query.data?.spaceId) {
+        throw new Error("Espace introuvable");
       }
       const { data, error } = await supabase
         .from("vehicles")
+        .insert({
+          owner_id: user.id,
+          space_id: query.data.spaceId,
+          label: input.label.trim() || "Nouveau véhicule",
+          plate: input.plate?.trim() || null,
+          make_model: input.make_model?.trim() || null,
+          acquisition_cost: input.acquisition_cost ?? null,
+          acquisition_on: input.acquisition_on || null,
+          amort_months: input.amort_months ?? null,
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      writeStoredVehicleId(user.id, data.id);
+      return data as Vehicle;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["workspace", user?.id] });
+    },
+  });
+
+  const updateVehicle = useMutation({
+    mutationFn: async ({
+      id,
+      ...patch
+    }: Partial<VehicleInput> & { id: string }) => {
+      if (!user?.id) throw new Error("Non authentifié");
+      const { data, error } = await supabase
+        .from("vehicles")
         .update(patch)
-        .eq("id", query.data.vehicle.id)
+        .eq("id", id)
         .eq("owner_id", user.id)
         .select("*")
         .single();
       if (error) throw error;
-      return data;
+      return data as Vehicle;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workspace", user?.id] });
@@ -158,8 +240,11 @@ export function useWorkspace() {
   return {
     ...query,
     spaceId: query.data?.spaceId,
+    vehicles: query.data?.vehicles ?? [],
     vehicle: query.data?.vehicle,
     taxSettings: query.data?.taxSettings,
+    setActiveVehicle,
+    createVehicle,
     updateVehicle,
     updateTaxSettings,
   };

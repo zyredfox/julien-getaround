@@ -63,16 +63,18 @@ export function TaxesPage() {
   return (
     <div className="space-y-4">
       <Seo title="Impôts" />
-      <h1 className="font-display text-2xl">Impôts</h1>
-      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+      <h1 className="page-title font-display text-2xl text-ink-900 dark:text-ink-50">
+        Impôts
+      </h1>
+      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-600/60 dark:bg-amber-950/50 dark:text-amber-100">
         Estimation indicative uniquement. Ne remplace pas un expert-comptable
         ni impots.gouv. En micro, l’impôt part du <strong>CA</strong> même si
         ton cash est négatif. Sous le seuil URSSAF, tu as en général{" "}
         <strong>IR + prélèvements sociaux</strong> sur la même base.
       </p>
 
-      <section className="rounded-2xl bg-white/90 p-4 shadow-soft ring-1 ring-ink-100">
-        <h2 className="text-sm font-semibold text-ink-800">
+      <section className="panel rounded-2xl bg-white p-4 shadow-soft ring-1 ring-ink-200 dark:bg-ink-900 dark:ring-ink-700">
+        <h2 className="text-sm font-semibold text-ink-800 dark:text-ink-100">
           Aperçu année en cours
         </h2>
         <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -127,23 +129,23 @@ export function TaxesPage() {
               {formatMoney(bilan.tax?.socialContributions ?? 0)}
             </dd>
           </div>
-          <div className="col-span-2 rounded-xl bg-ink-50 p-3">
+          <div className="col-span-2 rounded-xl bg-ink-50 p-3 dark:bg-ink-950/60">
             <dt className="text-ink-500">Total à prévoir (IR + PS)</dt>
             <dd className="font-display text-2xl text-warn">
               {formatMoney(bilan.tax?.estimatedTax ?? 0)}
             </dd>
           </div>
-          <div className="col-span-2 rounded-xl bg-accent-soft/60 p-3">
+          <div className="col-span-2 rounded-xl bg-accent-soft/60 p-3 dark:bg-accent/20">
             <dt className="text-ink-600">Super net (cash − IR − PS)</dt>
-            <dd className="font-display text-2xl text-accent-dark">
+            <dd className="font-display text-2xl text-accent-dark dark:text-accent-bright">
               {formatMoney(bilan.tax?.netAfterTax ?? 0)}
             </dd>
           </div>
         </dl>
         {isMicro ? (
-          <p className="mt-3 rounded-xl bg-ink-50 p-3 text-xs text-ink-600">
+          <p className="mt-3 rounded-xl bg-ink-50 p-3 text-xs text-ink-600 dark:bg-ink-950/60 dark:text-ink-300">
             Formule micro :{" "}
-            <span className="font-medium text-ink-800">
+            <span className="font-medium text-ink-800 dark:text-ink-100">
               CA × (1 − {taxSettings?.micro_allowance_percent ?? 50}%) × (
               {irPct}% IR + {socialPct}% PS)
             </span>
@@ -156,7 +158,7 @@ export function TaxesPage() {
 
       <form
         onSubmit={onSubmit}
-        className="space-y-3 rounded-2xl bg-white/90 p-4 shadow-soft ring-1 ring-ink-100"
+        className="panel space-y-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-ink-200 dark:bg-ink-900 dark:ring-ink-700"
       >
         <div>
           <label htmlFor="mode" className="text-sm font-medium text-ink-800">

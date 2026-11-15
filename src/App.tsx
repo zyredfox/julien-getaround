@@ -8,6 +8,7 @@ import { MorePage } from "@/pages/MorePage";
 import { RentalsPage } from "@/pages/RentalsPage";
 import { TaxesPage } from "@/pages/TaxesPage";
 import { VehiclePage } from "@/pages/VehiclePage";
+import { VehiclesPage } from "@/pages/VehiclesPage";
 
 export default function App() {
   return (
@@ -20,7 +21,9 @@ export default function App() {
             <Route path="locations" element={<RentalsPage />} />
             <Route path="depenses" element={<ExpensesPage />} />
             <Route path="impots" element={<TaxesPage />} />
-            <Route path="vehicule" element={<VehiclePage />} />
+            <Route path="vehicules" element={<VehiclesPage />} />
+            <Route path="vehicules/:id" element={<VehiclePage />} />
+            <Route path="vehicule" element={<Navigate to="/vehicules" replace />} />
             <Route path="plus" element={<MorePage />} />
           </Route>
         </Route>

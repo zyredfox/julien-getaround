@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { format, parseISO } from "date-fns";
+import { ArrowDownUp, Copy, Pencil, Trash2 } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -11,6 +12,8 @@ import {
 } from "@/lib/expandExpenses";
 import { formatMoney, toNumber } from "@/lib/money";
 import type { Expense, ExpenseCategory } from "@/integrations/supabase/types";
+
+type ChronoOrder = "desc" | "asc";
 
 const emptyForm = {
   spent_on: "",
@@ -30,6 +33,40 @@ export function ExpensesPage() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [chronoOrder, setChronoOrder] = useState<ChronoOrder>("desc");
+
+  const groupedExpenses = useMemo(() => {
+    const byChrono = (a: Expense, b: Expense) => {
+      const byDate =
+        chronoOrder === "desc"
+          ? b.spent_on.localeCompare(a.spent_on)
+          : a.spent_on.localeCompare(b.spent_on);
+      if (byDate !== 0) return byDate;
+      return (a.notes ?? "")
+        .toLowerCase()
+        .localeCompare((b.notes ?? "").toLowerCase(), "fr");
+    };
+
+    const groups = [
+      {
+        key: "recurring",
+        label: "Mensualités",
+        items: (data ?? []).filter((expense) => expense.is_recurring),
+      },
+      {
+        key: "one_shot",
+        label: "Ponctuelles",
+        items: (data ?? []).filter((expense) => !expense.is_recurring),
+      },
+    ] as const;
+
+    return groups
+      .map((group) => ({
+        ...group,
+        items: [...group.items].sort(byChrono),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [data, chronoOrder]);
 
   function openCreate() {
     const today = new Date().toISOString().slice(0, 10);
@@ -43,8 +80,7 @@ export function ExpensesPage() {
     setOpen(true);
   }
 
-  function openEdit(expense: Expense) {
-    setEditing(expense);
+  function fillFormFromExpense(expense: Expense) {
     setForm({
       spent_on: expense.spent_on,
       start_month: dateToMonthInput(expense.spent_on),
@@ -56,6 +92,18 @@ export function ExpensesPage() {
       amount: String(expense.amount),
       notes: expense.notes ?? "",
     });
+  }
+
+  function openEdit(expense: Expense) {
+    setEditing(expense);
+    fillFormFromExpense(expense);
+    setError(null);
+    setOpen(true);
+  }
+
+  function openDuplicate(expense: Expense) {
+    setEditing(null);
+    fillFormFromExpense(expense);
     setError(null);
     setOpen(true);
   }
@@ -107,83 +155,125 @@ export function ExpensesPage() {
   return (
     <div className="space-y-4">
       <Seo title="Dépenses" />
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl">Dépenses</h1>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="btn-signal"
-        >
-          Ajouter
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="page-title font-display text-2xl text-ink-900 dark:text-ink-50">
+          Dépenses
+        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-ink-200 bg-white px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:border-ink-500 dark:bg-ink-900 dark:text-ink-50 dark:hover:bg-ink-800"
+            aria-pressed={chronoOrder === "asc"}
+            aria-label={
+              chronoOrder === "desc"
+                ? "Ordre actuel : plus récent d’abord. Inverser."
+                : "Ordre actuel : plus ancien d’abord. Inverser."
+            }
+            onClick={() =>
+              setChronoOrder((order) => (order === "desc" ? "asc" : "desc"))
+            }
+          >
+            <ArrowDownUp className="size-4" aria-hidden />
+            {chronoOrder === "desc" ? "Plus récent" : "Plus ancien"}
+          </button>
+          <button type="button" onClick={openCreate} className="btn-signal">
+            Ajouter
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-ink-500">Chargement…</p>
+        <p className="text-sm text-ink-500 dark:text-ink-200">Chargement…</p>
       ) : null}
 
-      <ul className="space-y-3">
-        {(data ?? []).map((expense) => (
-          <li
-            key={expense.id}
-            className="rounded-2xl border-l-4 border-signal bg-white/95 p-4 shadow-soft ring-1 ring-ink-100/80"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-ink-900">
-                    {categoryLabel(expense.category)}
-                  </p>
-                  {expense.is_recurring ? (
-                    <span className="rounded-md bg-signal-soft px-2 py-0.5 text-xs font-semibold text-warn">
-                      Abo / mois
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-sm text-ink-500">
-                  {expense.is_recurring
-                    ? formatSubscriptionLabel(expense)
-                    : format(parseISO(expense.spent_on), "dd/MM/yyyy")}
-                </p>
-                {expense.notes ? (
-                  <p className="mt-1 text-sm text-ink-600">{expense.notes}</p>
-                ) : null}
-              </div>
-              <p className="font-display text-xl text-ink-900">
-                {formatMoney(Number(expense.amount))}
-                {expense.is_recurring ? (
-                  <span className="block text-xs font-sans font-medium text-ink-500">
-                    / mois
-                  </span>
-                ) : null}
+      <div className="space-y-4">
+        {groupedExpenses.map((group) => (
+          <section key={group.key} aria-labelledby={`type-${group.key}`}>
+            <div className="mb-2 flex items-baseline justify-between gap-2 px-0.5">
+              <h2
+                id={`type-${group.key}`}
+                className="text-sm font-semibold uppercase tracking-wide text-ink-800 dark:text-ink-100"
+              >
+                {group.label}
+              </h2>
+              <p className="text-xs font-semibold tabular-nums text-ink-700 dark:text-ink-200">
+                {group.items.length} ·{" "}
+                {formatMoney(
+                  group.items.reduce((sum, item) => sum + Number(item.amount), 0),
+                )}
+                {group.key === "recurring" ? " / mois" : ""}
               </p>
             </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => openEdit(expense)}
-              >
-                Modifier
-              </button>
-              <button
-                type="button"
-                className="btn-danger"
-                onClick={() => {
-                  if (confirm("Supprimer cette dépense ?")) {
-                    void deleteExpense.mutateAsync(expense.id);
-                  }
-                }}
-              >
-                Supprimer
-              </button>
-            </div>
-          </li>
+            <ul className="space-y-2">
+              {group.items.map((expense) => (
+                <li
+                  key={expense.id}
+                  className="list-row rounded-xl border-l-4 border-signal bg-white/95 px-3 py-2.5 shadow-soft ring-1 ring-ink-100/80 dark:bg-ink-800 dark:ring-ink-600"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-display text-base leading-tight text-ink-900 dark:text-ink-50">
+                        {expense.notes?.trim() ||
+                          categoryLabel(expense.category)}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-ink-500 dark:text-ink-200">
+                        {categoryLabel(expense.category)}
+                        {" · "}
+                        {expense.is_recurring
+                          ? formatSubscriptionLabel(expense)
+                          : format(parseISO(expense.spent_on), "dd/MM/yy")}
+                      </p>
+                    </div>
+                    <div className="w-[5.75rem] shrink-0 text-right tabular-nums">
+                      <p className="font-display text-lg leading-none text-ink-900 dark:text-ink-50">
+                        {formatMoney(Number(expense.amount))}
+                      </p>
+                      {expense.is_recurring ? (
+                        <p className="mt-0.5 text-xs font-medium text-ink-500 dark:text-ink-200">
+                          / mois
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 gap-0.5">
+                      <button
+                        type="button"
+                        className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
+                        aria-label="Dupliquer la dépense"
+                        onClick={() => openDuplicate(expense)}
+                      >
+                        <Copy className="size-4" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
+                        aria-label="Modifier la dépense"
+                        onClick={() => openEdit(expense)}
+                      >
+                        <Pencil className="size-4" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="grid size-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:text-red-300 dark:hover:bg-red-950/50"
+                        aria-label="Supprimer la dépense"
+                        onClick={() => {
+                          if (confirm("Supprimer cette dépense ?")) {
+                            void deleteExpense.mutateAsync(expense.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
 
       {!isLoading && (data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-ink-500">
+        <p className="text-sm text-ink-500 dark:text-ink-200">
           Aucune dépense. Ajoute assurance, boîtier, pneus…
         </p>
       ) : null}
@@ -192,7 +282,7 @@ export function ExpensesPage() {
         <div className="fixed inset-0 z-30 grid place-items-end bg-ink-950/40 p-4 sm:place-items-center">
           <form
             onSubmit={onSubmit}
-            className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-soft"
+            className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-soft dark:bg-ink-900 dark:text-ink-50"
           >
             <h2 className="font-display text-xl">
               {editing ? "Modifier" : "Nouvelle dépense"}
@@ -200,28 +290,21 @@ export function ExpensesPage() {
             <div className="mt-4 grid gap-3">
               <div>
                 <label
-                  htmlFor="category"
+                  htmlFor="title"
                   className="text-sm font-medium text-ink-800"
                 >
-                  Catégorie
+                  Titre
                 </label>
-                <select
-                  id="category"
-                  value={form.category}
+                <input
+                  id="title"
+                  required
+                  placeholder="ex. MAIF, carte grise, parking…"
+                  value={form.notes}
                   onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      category: e.target.value as ExpenseCategory,
-                    }))
+                    setForm((f) => ({ ...f, notes: e.target.value }))
                   }
                   className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2"
-                >
-                  {EXPENSE_CATEGORIES.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
@@ -267,7 +350,7 @@ export function ExpensesPage() {
                     className="size-5 rounded border-ink-300 text-accent focus:ring-accent"
                   />
                   <span className="text-sm text-ink-800">
-                    Abonnement mensuel (répété chaque mois)
+                    Mensualité (répétée chaque mois)
                   </span>
                 </label>
 
@@ -345,19 +428,31 @@ export function ExpensesPage() {
 
               <div>
                 <label
-                  htmlFor="notes"
+                  htmlFor="category"
                   className="text-sm font-medium text-ink-800"
                 >
-                  Notes
+                  Catégorie{" "}
+                  <span className="font-normal text-ink-500">
+                    (classement)
+                  </span>
                 </label>
-                <input
-                  id="notes"
-                  value={form.notes}
+                <select
+                  id="category"
+                  value={form.category}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, notes: e.target.value }))
+                    setForm((f) => ({
+                      ...f,
+                      category: e.target.value as ExpenseCategory,
+                    }))
                   }
                   className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2"
-                />
+                >
+                  {EXPENSE_CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             {error ? (

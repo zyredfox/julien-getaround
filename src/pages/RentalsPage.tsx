@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { format, parseISO } from "date-fns";
+import { Copy, Pencil, Search, Trash2, X } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { useRentals } from "@/hooks/useRentals";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -15,6 +16,14 @@ const emptyForm = {
   notes: "",
 };
 
+const emptyFilters = {
+  query: "",
+  from: "",
+  to: "",
+  minNet: "",
+  maxNet: "",
+};
+
 export function RentalsPage() {
   const { vehicle } = useWorkspace();
   const { data, isLoading, createRental, updateRental, deleteRental } =
@@ -23,6 +32,47 @@ export function RentalsPage() {
   const [editing, setEditing] = useState<Rental | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState(emptyFilters);
+
+  const filteredRentals = useMemo(() => {
+    const query = filters.query.trim().toLowerCase();
+    const minNet = filters.minNet ? toNumber(filters.minNet) : null;
+    const maxNet = filters.maxNet ? toNumber(filters.maxNet) : null;
+
+    return (data ?? []).filter((rental) => {
+      const start = rental.start_at.slice(0, 10);
+      const end = rental.end_at.slice(0, 10);
+      const net = Number(rental.net_amount);
+
+      if (filters.from && end < filters.from) return false;
+      if (filters.to && start > filters.to) return false;
+      if (minNet != null && net < minNet) return false;
+      if (maxNet != null && net > maxNet) return false;
+
+      if (!query) return true;
+
+      const haystack = [
+        start,
+        end,
+        format(parseISO(rental.start_at), "dd/MM/yyyy"),
+        format(parseISO(rental.end_at), "dd/MM/yyyy"),
+        String(rental.gross_amount),
+        String(rental.net_amount),
+        rental.notes ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [data, filters]);
+
+  const filtersActive =
+    Boolean(filters.query.trim()) ||
+    Boolean(filters.from) ||
+    Boolean(filters.to) ||
+    Boolean(filters.minNet) ||
+    Boolean(filters.maxNet);
 
   function openCreate() {
     setEditing(null);
@@ -33,6 +83,20 @@ export function RentalsPage() {
 
   function openEdit(rental: Rental) {
     setEditing(rental);
+    setForm({
+      start_at: rental.start_at.slice(0, 10),
+      end_at: rental.end_at.slice(0, 10),
+      gross_amount: String(rental.gross_amount),
+      platform_fees: String(rental.platform_fees),
+      net_amount: String(rental.net_amount),
+      notes: rental.notes ?? "",
+    });
+    setError(null);
+    setOpen(true);
+  }
+
+  function openDuplicate(rental: Rental) {
+    setEditing(null);
     setForm({
       start_at: rental.start_at.slice(0, 10),
       end_at: rental.end_at.slice(0, 10),
@@ -81,71 +145,178 @@ export function RentalsPage() {
     <div className="space-y-4">
       <Seo title="Locations" />
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl">Locations</h1>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="btn-primary"
-        >
+        <h1 className="page-title font-display text-2xl text-ink-900 dark:text-ink-50">
+          Locations
+        </h1>
+        <button type="button" onClick={openCreate} className="btn-primary">
           Ajouter
         </button>
       </div>
 
+      <section
+        className="panel filter-panel rounded-2xl bg-white p-3 shadow-soft ring-1 ring-ink-200 dark:bg-ink-800 dark:ring-ink-600"
+        aria-label="Filtres locations"
+      >
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-700 dark:text-ink-200"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={filters.query}
+            onChange={(e) =>
+              setFilters((current) => ({ ...current, query: e.target.value }))
+            }
+            placeholder="Rechercher (dates, notes, montant…)"
+            className="filter-input w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 py-2 pl-10 pr-3 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+          />
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+            Du
+            <input
+              type="date"
+              value={filters.from}
+              onChange={(e) =>
+                setFilters((current) => ({ ...current, from: e.target.value }))
+              }
+              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+            />
+          </label>
+          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+            Au
+            <input
+              type="date"
+              value={filters.to}
+              onChange={(e) =>
+                setFilters((current) => ({ ...current, to: e.target.value }))
+              }
+              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+            />
+          </label>
+          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+            Net min €
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              value={filters.minNet}
+              onChange={(e) =>
+                setFilters((current) => ({
+                  ...current,
+                  minNet: e.target.value,
+                }))
+              }
+              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+            />
+          </label>
+          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+            Net max €
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              value={filters.maxNet}
+              onChange={(e) =>
+                setFilters((current) => ({
+                  ...current,
+                  maxNet: e.target.value,
+                }))
+              }
+              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+            />
+          </label>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-ink-700 dark:text-ink-200">
+            {filteredRentals.length} / {(data ?? []).length} location
+            {(data ?? []).length > 1 ? "s" : ""}
+          </p>
+          {filtersActive ? (
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-ink-700"
+              onClick={() => setFilters(emptyFilters)}
+            >
+              <X className="size-4" aria-hidden />
+              Effacer
+            </button>
+          ) : null}
+        </div>
+      </section>
+
       {isLoading ? (
-        <p className="text-sm text-ink-500">Chargement…</p>
+        <p className="text-sm text-ink-500 dark:text-ink-300">Chargement…</p>
       ) : null}
 
-      <ul className="space-y-3">
-        {(data ?? []).map((rental) => (
+      <ul className="space-y-2">
+        {filteredRentals.map((rental) => (
           <li
             key={rental.id}
-            className="rounded-2xl border-l-4 border-accent bg-white/95 p-4 shadow-soft ring-1 ring-ink-100/80"
+            className="list-row rounded-xl border-l-4 border-accent bg-white/95 px-3 py-2.5 shadow-soft ring-1 ring-ink-100/80 dark:bg-ink-900/85 dark:ring-ink-700"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium text-ink-900">
-                  {format(parseISO(rental.start_at), "dd/MM/yyyy")} →{" "}
-                  {format(parseISO(rental.end_at), "dd/MM/yyyy")}
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-ink-900 dark:text-ink-50">
+                  {format(parseISO(rental.start_at), "dd/MM/yy")} →{" "}
+                  {format(parseISO(rental.end_at), "dd/MM/yy")}
                 </p>
-                <p className="mt-1 text-sm text-ink-500">
+                <p className="mt-0.5 truncate text-xs text-ink-500 dark:text-ink-300">
                   Brut {formatMoney(Number(rental.gross_amount))} · Frais{" "}
                   {formatMoney(Number(rental.platform_fees))}
+                  {rental.notes ? ` · ${rental.notes}` : ""}
                 </p>
-                {rental.notes ? (
-                  <p className="mt-1 text-sm text-ink-600">{rental.notes}</p>
-                ) : null}
               </div>
-              <p className="font-display text-xl text-accent-dark">
-                {formatMoney(Number(rental.net_amount))}
-              </p>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => openEdit(rental)}
-              >
-                Modifier
-              </button>
-              <button
-                type="button"
-                className="btn-danger"
-                onClick={() => {
-                  if (confirm("Supprimer cette location ?")) {
-                    void deleteRental.mutateAsync(rental.id);
-                  }
-                }}
-              >
-                Supprimer
-              </button>
+              <div className="w-[5.75rem] shrink-0 text-right tabular-nums">
+                <p className="font-display text-lg leading-none text-accent-dark dark:text-accent-bright">
+                  {formatMoney(Number(rental.net_amount))}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-0.5">
+                <button
+                  type="button"
+                  className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
+                  aria-label="Dupliquer la location"
+                  onClick={() => openDuplicate(rental)}
+                >
+                  <Copy className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
+                  aria-label="Modifier la location"
+                  onClick={() => openEdit(rental)}
+                >
+                  <Pencil className="size-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="grid size-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:text-red-300 dark:hover:bg-red-950/50"
+                  aria-label="Supprimer la location"
+                  onClick={() => {
+                    if (confirm("Supprimer cette location ?")) {
+                      void deleteRental.mutateAsync(rental.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </div>
             </div>
           </li>
         ))}
       </ul>
 
       {!isLoading && (data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-ink-500">
+        <p className="text-sm text-ink-500 dark:text-ink-300">
           Aucune location. Ajoute ta première entrée.
+        </p>
+      ) : null}
+
+      {!isLoading && (data?.length ?? 0) > 0 && filteredRentals.length === 0 ? (
+        <p className="text-sm text-ink-500 dark:text-ink-300">
+          Aucune location ne correspond aux filtres.
         </p>
       ) : null}
 
@@ -153,7 +324,7 @@ export function RentalsPage() {
         <div className="fixed inset-0 z-30 grid place-items-end bg-ink-950/40 p-4 sm:place-items-center">
           <form
             onSubmit={onSubmit}
-            className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-soft"
+            className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-soft dark:bg-ink-900 dark:text-ink-50"
             aria-label={editing ? "Modifier location" : "Nouvelle location"}
           >
             <h2 className="font-display text-xl">
@@ -228,10 +399,7 @@ export function RentalsPage() {
               >
                 Annuler
               </button>
-              <button
-                type="submit"
-                className="btn-primary flex-1"
-              >
+              <button type="submit" className="btn-primary flex-1">
                 Enregistrer
               </button>
             </div>
@@ -261,7 +429,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="text-sm font-medium text-ink-800">
+      <label htmlFor={id} className="text-sm font-medium text-ink-800 dark:text-ink-200">
         {label}
       </label>
       <input
@@ -272,7 +440,7 @@ function Field({
         step={type === "number" ? "0.01" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2"
+        className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-50"
       />
     </div>
   );
