@@ -49,6 +49,10 @@ const CRYPTO_ALIASES: Record<string, string> = {
   LTC: "litecoin",
   UNI: "uniswap",
   ATOM: "cosmos",
+  USDT: "tether",
+  USDC: "usd-coin",
+  DAI: "dai",
+  BUSD: "binance-usd",
 };
 
 function cacheKey(source: QuoteSource, symbol: string): string {

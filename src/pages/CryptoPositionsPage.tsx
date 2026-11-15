@@ -251,7 +251,7 @@ export function CryptoPositionsPage() {
                 value={form.ticker}
                 onChange={(value) => setForm((f) => ({ ...f, ticker: value }))}
                 required
-                hint="Ex. BTC → bitcoin · cours CoinGecko EUR auto"
+                hint="Ex. BTC, USDT, ETH — ou id CoinGecko (tether, bitcoin)"
               />
               <Field
                 id="label"

@@ -19,6 +19,7 @@ export function CryptoHomePage() {
     latent,
     positionValue,
     positionValueUsd,
+    positionCost,
     isLoading,
     refreshQuotes,
   } = useCryptoPositions(cryptoSpace?.id);
@@ -164,6 +165,7 @@ export function CryptoHomePage() {
             {positions.slice(0, 5).map((row) => {
               const value = positionValue(row);
               const valueUsd = positionValueUsd(row);
+              const rowLatent = value - positionCost(row);
               const weight =
                 marketValue > 0
                   ? Math.round((value / marketValue) * 1000) / 10
@@ -188,6 +190,17 @@ export function CryptoHomePage() {
                   <div className="shrink-0 text-right">
                     <p className="font-display text-lg text-ink-900 dark:text-ink-50">
                       {formatMoney(value)}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-xs font-semibold",
+                        rowLatent >= 0
+                          ? "text-accent-dark dark:text-accent-bright"
+                          : "text-warn",
+                      )}
+                    >
+                      {rowLatent >= 0 ? "+" : ""}
+                      {formatMoney(rowLatent)}
                     </p>
                     <p className="text-xs font-medium text-ink-500 dark:text-ink-300">
                       {unitUsd > 0 ? formatUsd(valueUsd) : "— $"}

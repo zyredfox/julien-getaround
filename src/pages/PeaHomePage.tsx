@@ -17,6 +17,7 @@ export function PeaHomePage() {
     invested,
     latent,
     positionValue,
+    positionCost,
     isLoading,
     refreshQuotes,
   } = usePeaPositions(peaSpace?.id);
@@ -146,6 +147,7 @@ export function PeaHomePage() {
           <ul className="space-y-2">
             {positions.slice(0, 5).map((row) => {
               const value = positionValue(row);
+              const rowLatent = value - positionCost(row);
               const weight =
                 marketValue > 0
                   ? Math.round((value / marketValue) * 1000) / 10
@@ -165,9 +167,22 @@ export function PeaHomePage() {
                       {weight}%
                     </p>
                   </div>
-                  <p className="shrink-0 font-display text-lg text-ink-900 dark:text-ink-50">
-                    {formatMoney(value)}
-                  </p>
+                  <div className="shrink-0 text-right">
+                    <p className="font-display text-lg text-ink-900 dark:text-ink-50">
+                      {formatMoney(value)}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-xs font-semibold",
+                        rowLatent >= 0
+                          ? "text-accent-dark dark:text-accent-bright"
+                          : "text-warn",
+                      )}
+                    >
+                      {rowLatent >= 0 ? "+" : ""}
+                      {formatMoney(rowLatent)}
+                    </p>
+                  </div>
                 </li>
               );
             })}
