@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { Car, Check, Plus } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/cn";
 
 export function VehiclesPage() {
+  const toast = useToast();
   const { vehicles, vehicle, setActiveVehicle } = useWorkspace();
 
   return (
@@ -20,7 +22,7 @@ export function VehiclesPage() {
           </p>
         </div>
         <Link
-          to="/vehicules/nouveau"
+          to="/getaround/vehicules/nouveau"
           className="btn-signal inline-flex min-h-11 items-center gap-2"
         >
           <Plus className="size-4" aria-hidden />
@@ -41,7 +43,7 @@ export function VehiclesPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <Link
-                    to={`/vehicules/${item.id}`}
+                    to={`/getaround/vehicules/${item.id}`}
                     className="min-w-0 flex-1 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     <div className="flex items-center gap-2">
@@ -69,7 +71,20 @@ export function VehiclesPage() {
                     <button
                       type="button"
                       className="min-h-11 rounded-xl border border-ink-200 px-3 text-sm font-semibold text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent dark:border-ink-500 dark:text-ink-100 dark:hover:bg-ink-800"
-                      onClick={() => void setActiveVehicle.mutateAsync(item.id)}
+                      onClick={() => {
+                        void setActiveVehicle
+                          .mutateAsync(item.id)
+                          .then(() =>
+                            toast.success(`Suivi : ${item.label}`),
+                          )
+                          .catch((err: unknown) =>
+                            toast.error(
+                              err instanceof Error
+                                ? err.message
+                                : "Changement impossible",
+                            ),
+                          );
+                      }}
                     >
                       Suivre
                     </button>

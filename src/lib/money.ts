@@ -4,8 +4,18 @@ const eur = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 2,
 });
 
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
+
 export function formatMoney(value: number): string {
   return eur.format(Number.isFinite(value) ? value : 0);
+}
+
+export function formatUsd(value: number): string {
+  return usd.format(Number.isFinite(value) ? value : 0);
 }
 
 export function toNumber(value: string | number | null | undefined): number {

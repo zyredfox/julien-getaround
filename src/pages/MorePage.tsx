@@ -8,11 +8,13 @@ import {
   Sun,
 } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/hooks/useAuth";
 import { useUiPrefs } from "@/hooks/useUiPrefs";
 
 export function MorePage() {
   const { user, signOut } = useAuth();
+  const toast = useToast();
   const { theme, density, toggleTheme, toggleDensity } = useUiPrefs();
 
   return (
@@ -34,7 +36,12 @@ export function MorePage() {
         </h2>
         <button
           type="button"
-          onClick={toggleTheme}
+          onClick={() => {
+            toggleTheme();
+            toast.success(
+              theme === "dark" ? "Mode clair activé." : "Mode sombre activé.",
+            );
+          }}
           className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-ink-800 bg-white px-4 text-left font-semibold text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:border-ink-500 dark:bg-ink-950 dark:text-ink-50"
           aria-pressed={theme === "dark"}
         >
@@ -52,7 +59,14 @@ export function MorePage() {
         </button>
         <button
           type="button"
-          onClick={toggleDensity}
+          onClick={() => {
+            toggleDensity();
+            toast.success(
+              density === "compact"
+                ? "Densité confortable."
+                : "Densité compacte.",
+            );
+          }}
           className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-ink-800 bg-white px-4 text-left font-semibold text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:border-ink-500 dark:bg-ink-950 dark:text-ink-50"
           aria-pressed={density === "compact"}
         >
@@ -68,14 +82,14 @@ export function MorePage() {
 
       <nav className="space-y-2" aria-label="Actions">
         <Link
-          to="/vehicules"
+          to="/getaround/vehicules"
           className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-ink-800 bg-white px-4 font-semibold text-ink-900 shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:border-ink-500 dark:bg-ink-900 dark:text-ink-50"
         >
           <Car className="size-5 text-accent-dark dark:text-accent-bright" aria-hidden />
           Mes véhicules
         </Link>
         <Link
-          to="/impots"
+          to="/getaround/impots"
           className="flex min-h-14 items-center gap-3 rounded-2xl border-2 border-ink-800 bg-white px-4 font-semibold text-ink-900 shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:border-ink-500 dark:bg-ink-900 dark:text-ink-50"
         >
           <Percent className="size-5 text-accent-dark dark:text-accent-bright" aria-hidden />
@@ -83,7 +97,9 @@ export function MorePage() {
         </Link>
         <button
           type="button"
-          onClick={() => void signOut()}
+          onClick={() => {
+            void signOut().then(() => toast.success("Déconnecté."));
+          }}
           className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-red-700 bg-red-50 px-4 text-left font-semibold text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:bg-red-950/40 dark:text-red-200"
         >
           <LogOut className="size-5" aria-hidden />

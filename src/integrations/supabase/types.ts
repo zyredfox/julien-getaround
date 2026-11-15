@@ -72,6 +72,28 @@ export type TaxSettings = {
   created_at: string;
 };
 
+export type PeaPosition = {
+  id: string;
+  space_id: string;
+  owner_id: string;
+  ticker: string;
+  isin: string | null;
+  label: string;
+  quantity: number;
+  avg_cost: number;
+  last_price: number | null;
+  last_price_on: string | null;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Même forme que PEA + cours USD ; ticker = id CoinGecko (bitcoin) ou alias (BTC). */
+export type CryptoPosition = PeaPosition & {
+  last_price_usd?: number | null;
+};
+
 type TableDef<
   Row,
   Insert = Partial<Row> & Record<string, unknown>,
@@ -154,6 +176,45 @@ export type Database = {
           social_rate_percent?: number;
           notes?: string | null;
           created_at?: string;
+        }
+      >;
+      pea_positions: TableDef<
+        PeaPosition,
+        {
+          id?: string;
+          space_id: string;
+          owner_id: string;
+          ticker: string;
+          isin?: string | null;
+          label: string;
+          quantity?: number;
+          avg_cost?: number;
+          last_price?: number | null;
+          last_price_on?: string | null;
+          currency?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        }
+      >;
+      crypto_positions: TableDef<
+        CryptoPosition,
+        {
+          id?: string;
+          space_id: string;
+          owner_id: string;
+          ticker: string;
+          isin?: string | null;
+          label: string;
+          quantity?: number;
+          avg_cost?: number;
+          last_price?: number | null;
+          last_price_usd?: number | null;
+          last_price_on?: string | null;
+          currency?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
         }
       >;
     };

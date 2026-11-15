@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { isEmailAllowed } from "@/config/site";
 import { supabase } from "@/integrations/supabase/client";
+
+const ALLOWLIST_MESSAGE =
+  "Accès réservé : cet email n’est pas autorisé sur cette app.";
 
 type AuthContextValue = {
   session: Session | null;
@@ -28,17 +32,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    async function applySession(next: Session | null) {
       if (!mounted) return;
-      setSession(data.session);
+      if (next?.user?.email && !isEmailAllowed(next.user.email)) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setLoading(false);
+        return;
+      }
+      setSession(next);
       setLoading(false);
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      void applySession(data.session);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setLoading(false);
+      void applySession(nextSession);
     });
 
     return () => {
@@ -48,15 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    if (!isEmailAllowed(email)) return ALLOWLIST_MESSAGE;
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
     return error?.message ?? null;
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    if (!isEmailAllowed(email)) return ALLOWLIST_MESSAGE;
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+    });
     return error?.message ?? null;
   }, []);
 

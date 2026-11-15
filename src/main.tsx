@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { UiPrefsProvider } from "@/hooks/useUiPrefs";
 import App from "./App";
@@ -22,7 +23,9 @@ createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <UiPrefsProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </UiPrefsProvider>
         </AuthProvider>
       </QueryClientProvider>

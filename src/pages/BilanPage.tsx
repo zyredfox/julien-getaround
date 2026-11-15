@@ -148,7 +148,7 @@ export function BilanPage() {
               ) : null}
             </div>
             <Link
-              to="/impots"
+              to="/getaround/impots"
               className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border-2 border-ink-800 bg-white px-3 py-2 text-sm font-semibold text-ink-900 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:border-white/80 dark:outline-white"
             >
               Paramètres
@@ -195,7 +195,11 @@ export function BilanPage() {
         <section className="rounded-2xl border border-dashed border-ink-300 bg-white/70 p-4 text-sm text-ink-700 dark:border-ink-600 dark:bg-ink-900/70 dark:text-ink-200">
           Amortissement non configuré. Renseigne le{" "}
           <Link
-            to={vehicle ? `/vehicules/${vehicle.id}` : "/vehicules"}
+            to={
+              vehicle
+                ? `/getaround/vehicules/${vehicle.id}`
+                : "/getaround/vehicules"
+            }
             className="font-semibold text-accent-dark underline dark:text-accent-bright"
           >
             prix d’achat
@@ -215,13 +219,13 @@ export function BilanPage() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
-              to="/locations"
+              to="/getaround/locations"
               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Ajouter une location
             </Link>
             <Link
-              to="/depenses"
+              to="/getaround/depenses"
               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink-900 px-4 text-sm font-semibold text-white hover:bg-ink-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900"
             >
               Ajouter une dépense

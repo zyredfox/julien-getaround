@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { TaxSettings, Vehicle } from "@/integrations/supabase/types";
+import type { Space, TaxSettings, Vehicle } from "@/integrations/supabase/types";
 import { siteConfig } from "@/config/site";
 import { DEFAULT_TAX_MODE } from "@/lib/taxEstimate";
 
@@ -30,36 +30,49 @@ function pickActiveVehicle(vehicles: Vehicle[], userId: string): Vehicle {
   return vehicles.find((item) => item.id === stored) ?? vehicles[0];
 }
 
+async function ensureSpace(
+  userId: string,
+  kind: "getaround" | "pea" | "crypto",
+  name: string,
+): Promise<Space> {
+  const { data: spaces, error: spacesError } = await supabase
+    .from("spaces")
+    .select("*")
+    .eq("owner_id", userId)
+    .eq("kind", kind)
+    .limit(1);
+
+  if (spacesError) throw spacesError;
+
+  if (spaces?.[0]) return spaces[0] as Space;
+
+  const { data: createdSpace, error } = await supabase
+    .from("spaces")
+    .insert({
+      owner_id: userId,
+      kind,
+      name,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return createdSpace as Space;
+}
+
 async function ensureWorkspace(userId: string): Promise<{
+  getaroundSpace: Space;
+  peaSpace: Space;
+  cryptoSpace: Space;
+  spaces: Space[];
   spaceId: string;
   vehicles: Vehicle[];
   vehicle: Vehicle;
   taxSettings: TaxSettings;
 }> {
-  const { data: spaces, error: spacesError } = await supabase
-    .from("spaces")
-    .select("*")
-    .eq("owner_id", userId)
-    .eq("kind", "getaround")
-    .limit(1);
-
-  if (spacesError) throw spacesError;
-
-  let spaceId = spaces?.[0]?.id;
-
-  if (!spaceId) {
-    const { data: createdSpace, error } = await supabase
-      .from("spaces")
-      .insert({
-        owner_id: userId,
-        kind: "getaround",
-        name: "Getaround",
-      })
-      .select("*")
-      .single();
-    if (error) throw error;
-    spaceId = createdSpace.id;
-  }
+  const getaroundSpace = await ensureSpace(userId, "getaround", "Getaround");
+  const peaSpace = await ensureSpace(userId, "pea", "PEA");
+  const cryptoSpace = await ensureSpace(userId, "crypto", "Crypto");
+  const spaceId = getaroundSpace.id;
 
   const { data: vehicleRows, error: vehiclesError } = await supabase
     .from("vehicles")
@@ -117,7 +130,16 @@ async function ensureWorkspace(userId: string): Promise<{
     taxSettings = createdTax;
   }
 
-  return { spaceId, vehicles, vehicle, taxSettings };
+  return {
+    getaroundSpace,
+    peaSpace,
+    cryptoSpace,
+    spaces: [getaroundSpace, peaSpace, cryptoSpace],
+    spaceId,
+    vehicles,
+    vehicle,
+    taxSettings,
+  };
 }
 
 export type VehicleInput = {
@@ -240,6 +262,10 @@ export function useWorkspace() {
   return {
     ...query,
     spaceId: query.data?.spaceId,
+    getaroundSpace: query.data?.getaroundSpace,
+    peaSpace: query.data?.peaSpace,
+    cryptoSpace: query.data?.cryptoSpace,
+    spaces: query.data?.spaces ?? [],
     vehicles: query.data?.vehicles ?? [],
     vehicle: query.data?.vehicle,
     taxSettings: query.data?.taxSettings,

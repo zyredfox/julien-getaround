@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 import { toNumber } from "@/lib/money";
 import type { Vehicle } from "@/integrations/supabase/types";
 import type { VehicleInput } from "@/hooks/useWorkspace";
@@ -14,13 +15,13 @@ export function VehicleForm({
   submitLabel,
   onSubmit,
 }: VehicleFormProps) {
+  const toast = useToast();
   const [label, setLabel] = useState("");
   const [plate, setPlate] = useState("");
   const [makeModel, setMakeModel] = useState("");
   const [acquisitionCost, setAcquisitionCost] = useState("");
   const [acquisitionOn, setAcquisitionOn] = useState("");
   const [amortMonths, setAmortMonths] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -39,7 +40,6 @@ export function VehicleForm({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setMessage(null);
     setError(null);
     setSaving(true);
     try {
@@ -51,9 +51,11 @@ export function VehicleForm({
         acquisition_on: acquisitionOn || null,
         amort_months: amortMonths ? Math.round(toNumber(amortMonths)) : null,
       });
-      setMessage("Véhicule enregistré.");
+      toast.success("Véhicule enregistré.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur");
+      const message = err instanceof Error ? err.message : "Erreur";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -98,11 +100,6 @@ export function VehicleForm({
         jusqu’à la fin de la durée. Inclus dans le bilan (net économique,
         graphs, estimation d’impôt en mode réel).
       </p>
-      {message ? (
-        <p className="text-sm text-accent-dark dark:text-accent-bright" role="status">
-          {message}
-        </p>
-      ) : null}
       {error ? (
         <p className="text-sm text-red-700 dark:text-red-300" role="alert">
           {error}

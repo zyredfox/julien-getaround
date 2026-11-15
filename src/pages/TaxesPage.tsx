@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Seo } from "@/components/Seo";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useBilan } from "@/hooks/useBilan";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useRentals } from "@/hooks/useRentals";
@@ -15,6 +16,7 @@ import { siteConfig } from "@/config/site";
 
 export function TaxesPage() {
   const { vehicle, taxSettings, updateTaxSettings } = useWorkspace();
+  const toast = useToast();
   const { data: rentals } = useRentals(vehicle?.id);
   const { data: expenses } = useExpenses(vehicle?.id);
   const bilan = useBilan(rentals, expenses, taxSettings, "year", vehicle);
@@ -25,7 +27,6 @@ export function TaxesPage() {
     String(siteConfig.defaultSocialRatePercent),
   );
   const [allowance, setAllowance] = useState("50");
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,7 +41,6 @@ export function TaxesPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setMessage(null);
     setError(null);
     try {
       await updateTaxSettings.mutateAsync({
@@ -49,9 +49,11 @@ export function TaxesPage() {
         social_rate_percent: toNumber(socialRate),
         micro_allowance_percent: toNumber(allowance),
       });
-      setMessage("Paramètres enregistrés.");
+      toast.success("Paramètres fiscaux enregistrés.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur");
+      const message = err instanceof Error ? err.message : "Erreur";
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -232,11 +234,6 @@ export function TaxesPage() {
               className="mt-1 w-full min-h-11 rounded-xl border border-ink-100 bg-ink-50 px-3 outline-none ring-accent focus:ring-2"
             />
           </div>
-        ) : null}
-        {message ? (
-          <p className="text-sm text-accent-dark" role="status">
-            {message}
-          </p>
         ) : null}
         {error ? (
           <p className="text-sm text-red-700" role="alert">

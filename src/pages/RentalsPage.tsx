@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { format, parseISO } from "date-fns";
 import { Copy, Pencil, Search, Trash2, X } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useRentals } from "@/hooks/useRentals";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
@@ -44,6 +45,7 @@ const emptyFilters = {
 
 export function RentalsPage() {
   const { vehicle } = useWorkspace();
+  const toast = useToast();
   const { data, isLoading, createRental, updateRental, deleteRental } =
     useRentals(vehicle?.id);
   const [open, setOpen] = useState(false);
@@ -152,12 +154,17 @@ export function RentalsPage() {
     try {
       if (editing) {
         await updateRental.mutateAsync({ id: editing.id, ...payload });
+        toast.success("Location mise à jour.");
       } else {
         await createRental.mutateAsync(payload);
+        toast.success("Location enregistrée.");
       }
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur d’enregistrement");
+      const message =
+        err instanceof Error ? err.message : "Erreur d’enregistrement";
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -315,9 +322,17 @@ export function RentalsPage() {
                   className="grid size-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:text-red-300 dark:hover:bg-red-950/50"
                   aria-label="Supprimer la location"
                   onClick={() => {
-                    if (confirm("Supprimer cette location ?")) {
-                      void deleteRental.mutateAsync(rental.id);
-                    }
+                    if (!confirm("Supprimer cette location ?")) return;
+                    void deleteRental
+                      .mutateAsync(rental.id)
+                      .then(() => toast.success("Location supprimée."))
+                      .catch((err: unknown) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Suppression impossible",
+                        ),
+                      );
                   }}
                 >
                   <Trash2 className="size-4" aria-hidden />

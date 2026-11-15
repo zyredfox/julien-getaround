@@ -1,27 +1,30 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
+  Bitcoin,
+  Briefcase,
   Car,
-  LayoutDashboard,
+  LineChart,
   MoreHorizontal,
-  Receipt,
 } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/cn";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { getSpaceByPath } from "@/spaces/registry";
 
-const NAV = [
-  { to: "/", label: "Bilan", icon: LayoutDashboard, end: true },
-  { to: "/locations", label: "Locations", icon: Car },
-  { to: "/depenses", label: "Dépenses", icon: Receipt },
-  { to: "/plus", label: "Plus", icon: MoreHorizontal },
-];
+const PRIMARY_NAV = [
+  { to: "/", label: "Total", icon: Briefcase, end: true },
+  { to: "/getaround", label: "Auto", icon: Car, end: false },
+  { to: "/pea", label: "PEA", icon: LineChart, end: false },
+  { to: "/crypto", label: "Crypto", icon: Bitcoin, end: false },
+  { to: "/plus", label: "Plus", icon: MoreHorizontal, end: false },
+] as const;
 
 function DesktopNavLink({
   to,
   label,
   icon: Icon,
   end,
-}: (typeof NAV)[number]) {
+}: (typeof PRIMARY_NAV)[number]) {
   return (
     <NavLink
       to={to}
@@ -50,18 +53,26 @@ function DesktopNavLink({
 
 export function AppLayout() {
   const { isLoading, isError, error, vehicle } = useWorkspace();
+  const { pathname } = useLocation();
+  const activeSpace = getSpaceByPath(pathname);
+
+  const subtitle =
+    activeSpace?.kind === "getaround"
+      ? (vehicle?.label ?? activeSpace.label)
+      : activeSpace?.label ?? siteConfig.siteTagline;
 
   return (
     <div className="app-shell min-h-dvh text-ink-900 dark:text-ink-100">
       <header className="surface-inverse border-b border-white/60 bg-ink-950/95 text-white backdrop-blur dark:border-ink-800">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5">
           <div className="min-w-0">
-            <p className="font-display text-xl leading-tight tracking-tight text-white">
+            <Link
+              to="/"
+              className="font-display text-xl leading-tight tracking-tight text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
               {siteConfig.siteName}
-            </p>
-            <p className="truncate text-xs text-ink-300">
-              {vehicle?.label ?? siteConfig.siteTagline}
-            </p>
+            </Link>
+            <p className="truncate text-xs text-ink-300">{subtitle}</p>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -69,13 +80,13 @@ export function AppLayout() {
               className="hidden items-center gap-1 md:flex"
               aria-label="Navigation bureau"
             >
-              {NAV.map((item) => (
+              {PRIMARY_NAV.map((item) => (
                 <DesktopNavLink key={item.to} {...item} />
               ))}
             </nav>
 
             <Link
-              to="/vehicules"
+              to="/getaround/vehicules"
               className="brand-mark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               aria-label="Mes véhicules"
               title="Mes véhicules"
@@ -113,8 +124,8 @@ export function AppLayout() {
         className="fixed inset-x-0 bottom-0 z-20 border-t border-ink-100 bg-white/95 backdrop-blur dark:border-ink-800 dark:bg-ink-950/95 md:hidden"
         aria-label="Navigation principale"
       >
-        <ul className="mx-auto grid max-w-3xl grid-cols-4">
-          {NAV.map((item) => (
+        <ul className="mx-auto grid max-w-3xl grid-cols-5">
+          {PRIMARY_NAV.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}

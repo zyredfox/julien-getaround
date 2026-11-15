@@ -6,12 +6,10 @@ import { siteConfig } from "@/config/site";
 import { useAuth } from "@/hooks/useAuth";
 
 export function LoginPage() {
-  const { user, loading, signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const { user, loading, signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && user) {
@@ -21,21 +19,10 @@ export function LoginPage() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    setInfo(null);
     setSubmitting(true);
     try {
-      const message =
-        mode === "login"
-          ? await signIn(email.trim(), password)
-          : await signUp(email.trim(), password);
-      if (message) {
-        setError(message);
-      } else if (mode === "signup") {
-        setInfo(
-          "Compte créé. Si la confirmation email est activée, vérifie ta boîte mail, sinon tu peux te connecter.",
-        );
-        setMode("login");
-      }
+      const message = await signIn(email.trim(), password);
+      if (message) setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -92,9 +79,7 @@ export function LoginPage() {
             <input
               id="password"
               type="password"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
+              autoComplete="current-password"
               required
               minLength={6}
               value={password}
@@ -108,38 +93,19 @@ export function LoginPage() {
               {error}
             </p>
           ) : null}
-          {info ? (
-            <p className="text-sm text-accent-dark" role="status">
-              {info}
-            </p>
-          ) : null}
 
           <button
             type="submit"
             disabled={submitting}
             className="flex min-h-11 w-full items-center justify-center rounded-xl bg-accent px-4 font-semibold text-white transition hover:bg-accent-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
           >
-            {submitting
-              ? "Patiente…"
-              : mode === "login"
-                ? "Se connecter"
-                : "Créer mon compte"}
+            {submitting ? "Patiente…" : "Se connecter"}
           </button>
         </form>
 
-        <button
-          type="button"
-          className="min-h-11 w-full px-6 pb-5 text-sm font-medium text-ink-600 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          onClick={() => {
-            setMode((current) => (current === "login" ? "signup" : "login"));
-            setError(null);
-            setInfo(null);
-          }}
-        >
-          {mode === "login"
-            ? "Pas encore de compte ? Créer mon compte"
-            : "Déjà un compte ? Se connecter"}
-        </button>
+        <p className="px-6 pb-5 text-center text-xs text-ink-500">
+          Accès privé — email autorisé uniquement.
+        </p>
       </div>
     </div>
   );

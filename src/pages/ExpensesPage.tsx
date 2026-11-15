@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { format, parseISO } from "date-fns";
 import { ArrowDownUp, Copy, Pencil, Trash2 } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { EXPENSE_CATEGORIES, categoryLabel } from "@/lib/categories";
@@ -27,6 +28,7 @@ const emptyForm = {
 
 export function ExpensesPage() {
   const { vehicle } = useWorkspace();
+  const toast = useToast();
   const { data, isLoading, createExpense, updateExpense, deleteExpense } =
     useExpenses(vehicle?.id);
   const [open, setOpen] = useState(false);
@@ -143,12 +145,17 @@ export function ExpensesPage() {
     try {
       if (editing) {
         await updateExpense.mutateAsync({ id: editing.id, ...payload });
+        toast.success("Dépense mise à jour.");
       } else {
         await createExpense.mutateAsync(payload);
+        toast.success("Dépense enregistrée.");
       }
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur d’enregistrement");
+      const message =
+        err instanceof Error ? err.message : "Erreur d’enregistrement";
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -256,9 +263,17 @@ export function ExpensesPage() {
                         className="grid size-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:text-red-300 dark:hover:bg-red-950/50"
                         aria-label="Supprimer la dépense"
                         onClick={() => {
-                          if (confirm("Supprimer cette dépense ?")) {
-                            void deleteExpense.mutateAsync(expense.id);
-                          }
+                          if (!confirm("Supprimer cette dépense ?")) return;
+                          void deleteExpense
+                            .mutateAsync(expense.id)
+                            .then(() => toast.success("Dépense supprimée."))
+                            .catch((err: unknown) =>
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Suppression impossible",
+                              ),
+                            );
                         }}
                       >
                         <Trash2 className="size-4" aria-hidden />
