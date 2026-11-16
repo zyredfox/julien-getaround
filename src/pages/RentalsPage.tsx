@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { format, parseISO } from "date-fns";
-import { Copy, Pencil, Search, Trash2, X } from "lucide-react";
+import { CalendarDays, Copy, List, Pencil, Search, Trash2, X } from "lucide-react";
+import { RentalsCalendar } from "@/components/RentalsCalendar";
 import { Seo } from "@/components/Seo";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRentals } from "@/hooks/useRentals";
@@ -11,7 +12,11 @@ import {
   formatMoney,
   toNumber,
 } from "@/lib/money";
+import { rentalDailyNet, rentalDayCount } from "@/lib/rentalStats";
+import { cn } from "@/lib/cn";
 import type { Rental } from "@/integrations/supabase/types";
+
+type LocationsView = "calendar" | "list";
 
 const emptyForm = {
   start_at: "",
@@ -48,6 +53,7 @@ export function RentalsPage() {
   const toast = useToast();
   const { data, isLoading, createRental, updateRental, deleteRental } =
     useRentals(vehicle?.id);
+  const [view, setView] = useState<LocationsView>("calendar");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -94,9 +100,34 @@ export function RentalsPage() {
     Boolean(filters.minNet) ||
     Boolean(filters.maxNet);
 
+  const formDailyPreview = useMemo(() => {
+    if (!form.start_at || !form.end_at || form.end_at < form.start_at) {
+      return null;
+    }
+    if (form.net_amount === "") return null;
+    const days = rentalDayCount(form.start_at, form.end_at);
+    const daily = rentalDailyNet(
+      form.start_at,
+      form.end_at,
+      toNumber(form.net_amount),
+    );
+    return { days, daily };
+  }, [form.start_at, form.end_at, form.net_amount]);
+
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setError(null);
+    setOpen(true);
+  }
+
+  function openCreateOnDay(isoDate: string) {
+    setEditing(null);
+    setForm({
+      ...emptyForm,
+      start_at: isoDate,
+      end_at: isoDate,
+    });
     setError(null);
     setOpen(true);
   }
@@ -180,180 +211,247 @@ export function RentalsPage() {
         </button>
       </div>
 
-      <section
-        className="panel filter-panel rounded-2xl bg-white p-3 shadow-soft ring-1 ring-ink-200 dark:bg-ink-800 dark:ring-ink-600"
-        aria-label="Filtres locations"
+      <div
+        className="flex gap-1 rounded-2xl bg-white/90 p-1 shadow-soft ring-1 ring-ink-200 dark:bg-ink-900 dark:ring-ink-600"
+        role="tablist"
+        aria-label="Mode d’affichage"
       >
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-700 dark:text-ink-200"
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={filters.query}
-            onChange={(e) =>
-              setFilters((current) => ({ ...current, query: e.target.value }))
-            }
-            placeholder="Rechercher (dates, notes, montant…)"
-            className="filter-input w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 py-2 pl-10 pr-3 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
-          />
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
-            Du
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(e) =>
-                setFilters((current) => ({ ...current, from: e.target.value }))
-              }
-              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "calendar"}
+          className={cn(
+            "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+            view === "calendar"
+              ? "bg-ink-900 text-white dark:bg-accent"
+              : "text-ink-700 hover:bg-ink-50 dark:text-ink-200 dark:hover:bg-ink-800",
+          )}
+          onClick={() => setView("calendar")}
+        >
+          <CalendarDays className="size-4 shrink-0" aria-hidden />
+          Calendrier
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "list"}
+          className={cn(
+            "inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+            view === "list"
+              ? "bg-ink-900 text-white dark:bg-accent"
+              : "text-ink-700 hover:bg-ink-50 dark:text-ink-200 dark:hover:bg-ink-800",
+          )}
+          onClick={() => setView("list")}
+        >
+          <List className="size-4 shrink-0" aria-hidden />
+          Liste
+        </button>
+      </div>
+
+      {view === "list" ? (
+        <section
+          className="panel filter-panel rounded-2xl bg-white p-3 shadow-soft ring-1 ring-ink-200 dark:bg-ink-800 dark:ring-ink-600"
+          aria-label="Filtres locations"
+        >
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-700 dark:text-ink-200"
+              aria-hidden
             />
-          </label>
-          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
-            Au
             <input
-              type="date"
-              value={filters.to}
+              type="search"
+              value={filters.query}
               onChange={(e) =>
-                setFilters((current) => ({ ...current, to: e.target.value }))
+                setFilters((current) => ({ ...current, query: e.target.value }))
               }
-              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+              placeholder="Rechercher (dates, notes, montant…)"
+              className="filter-input w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 py-2 pl-10 pr-3 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
             />
-          </label>
-          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
-            Net min €
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              value={filters.minNet}
-              onChange={(e) =>
-                setFilters((current) => ({
-                  ...current,
-                  minNet: e.target.value,
-                }))
-              }
-              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
-            />
-          </label>
-          <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
-            Net max €
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              value={filters.maxNet}
-              onChange={(e) =>
-                setFilters((current) => ({
-                  ...current,
-                  maxNet: e.target.value,
-                }))
-              }
-              className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
-            />
-          </label>
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-ink-700 dark:text-ink-200">
-            {filteredRentals.length} / {(data ?? []).length} location
-            {(data ?? []).length > 1 ? "s" : ""}
-          </p>
-          {filtersActive ? (
-            <button
-              type="button"
-              className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-ink-700"
-              onClick={() => setFilters(emptyFilters)}
-            >
-              <X className="size-4" aria-hidden />
-              Effacer
-            </button>
-          ) : null}
-        </div>
-      </section>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+              Du
+              <input
+                type="date"
+                value={filters.from}
+                onChange={(e) =>
+                  setFilters((current) => ({ ...current, from: e.target.value }))
+                }
+                className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+              />
+            </label>
+            <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+              Au
+              <input
+                type="date"
+                value={filters.to}
+                onChange={(e) =>
+                  setFilters((current) => ({ ...current, to: e.target.value }))
+                }
+                className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+              />
+            </label>
+            <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+              Net min €
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={filters.minNet}
+                onChange={(e) =>
+                  setFilters((current) => ({
+                    ...current,
+                    minNet: e.target.value,
+                  }))
+                }
+                className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+              />
+            </label>
+            <label className="filter-label block text-xs font-semibold text-ink-800 dark:text-ink-100">
+              Net max €
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={filters.maxNet}
+                onChange={(e) =>
+                  setFilters((current) => ({
+                    ...current,
+                    maxNet: e.target.value,
+                  }))
+                }
+                className="filter-input mt-1 w-full min-h-11 rounded-xl border border-ink-200 bg-ink-50 px-2 text-sm text-ink-900 outline-none ring-accent focus:ring-2 dark:border-ink-600 dark:bg-ink-950 dark:text-ink-50"
+              />
+            </label>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-ink-700 dark:text-ink-200">
+              {filteredRentals.length} / {(data ?? []).length} location
+              {(data ?? []).length > 1 ? "s" : ""}
+            </p>
+            {filtersActive ? (
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-ink-700"
+                onClick={() => setFilters(emptyFilters)}
+              >
+                <X className="size-4" aria-hidden />
+                Effacer
+              </button>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {isLoading ? (
         <p className="text-sm text-ink-500 dark:text-ink-300">Chargement…</p>
       ) : null}
 
-      <ul className="space-y-2">
-        {filteredRentals.map((rental) => (
-          <li
-            key={rental.id}
-            className="list-row rounded-xl border-l-4 border-accent bg-white/95 px-3 py-2.5 shadow-soft ring-1 ring-ink-100/80 dark:bg-ink-900/85 dark:ring-ink-700"
-          >
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-ink-900 dark:text-ink-50">
-                  {format(parseISO(rental.start_at), "dd/MM/yy")} →{" "}
-                  {format(parseISO(rental.end_at), "dd/MM/yy")}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-ink-500 dark:text-ink-300">
-                  Brut {formatMoney(Number(rental.gross_amount))} · Frais{" "}
-                  {formatMoney(Number(rental.platform_fees))}
-                  {rental.notes ? ` · ${rental.notes}` : ""}
-                </p>
-              </div>
-              <div className="w-[5.75rem] shrink-0 text-right tabular-nums">
-                <p className="font-display text-lg leading-none text-accent-dark dark:text-accent-bright">
-                  {formatMoney(Number(rental.net_amount))}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-0.5">
-                <button
-                  type="button"
-                  className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
-                  aria-label="Dupliquer la location"
-                  onClick={() => openDuplicate(rental)}
-                >
-                  <Copy className="size-4" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
-                  aria-label="Modifier la location"
-                  onClick={() => openEdit(rental)}
-                >
-                  <Pencil className="size-4" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="grid size-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:text-red-300 dark:hover:bg-red-950/50"
-                  aria-label="Supprimer la location"
-                  onClick={() => {
-                    if (!confirm("Supprimer cette location ?")) return;
-                    void deleteRental
-                      .mutateAsync(rental.id)
-                      .then(() => toast.success("Location supprimée."))
-                      .catch((err: unknown) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Suppression impossible",
-                        ),
-                      );
-                  }}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {view === "calendar" ? (
+        <RentalsCalendar
+          rentals={data ?? []}
+          onSelectRental={openEdit}
+          onCreateOnDay={openCreateOnDay}
+        />
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {filteredRentals.map((rental) => {
+              const days = rentalDayCount(rental.start_at, rental.end_at);
+              const daily = rentalDailyNet(
+                rental.start_at,
+                rental.end_at,
+                Number(rental.net_amount),
+              );
+              return (
+              <li
+                key={rental.id}
+                className="list-row rounded-xl border-l-4 border-accent bg-white/95 px-3 py-2.5 shadow-soft ring-1 ring-ink-100/80 dark:bg-ink-900/85 dark:ring-ink-700"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink-900 dark:text-ink-50">
+                      {format(parseISO(rental.start_at), "dd/MM/yy")} →{" "}
+                      {format(parseISO(rental.end_at), "dd/MM/yy")}
+                      <span className="font-normal text-ink-500 dark:text-ink-300">
+                        {" "}
+                        · {days} j
+                      </span>
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-ink-500 dark:text-ink-300">
+                      {formatMoney(daily)}/j · Brut{" "}
+                      {formatMoney(Number(rental.gross_amount))} · Frais{" "}
+                      {formatMoney(Number(rental.platform_fees))}
+                      {rental.notes ? ` · ${rental.notes}` : ""}
+                    </p>
+                  </div>
+                  <div className="w-[5.75rem] shrink-0 text-right tabular-nums">
+                    <p className="font-display text-lg leading-none text-accent-dark dark:text-accent-bright">
+                      {formatMoney(Number(rental.net_amount))}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-ink-500 dark:text-ink-300">
+                      {formatMoney(daily)}/j
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-0.5">
+                    <button
+                      type="button"
+                      className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
+                      aria-label="Dupliquer la location"
+                      onClick={() => openDuplicate(rental)}
+                    >
+                      <Copy className="size-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid size-11 place-items-center rounded-lg text-ink-800 hover:bg-ink-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900 dark:text-ink-100 dark:hover:bg-white/10"
+                      aria-label="Modifier la location"
+                      onClick={() => openEdit(rental)}
+                    >
+                      <Pencil className="size-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="grid size-11 place-items-center rounded-lg text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 dark:text-red-300 dark:hover:bg-red-950/50"
+                      aria-label="Supprimer la location"
+                      onClick={() => {
+                        if (!confirm("Supprimer cette location ?")) return;
+                        void deleteRental
+                          .mutateAsync(rental.id)
+                          .then(() => toast.success("Location supprimée."))
+                          .catch((err: unknown) =>
+                            toast.error(
+                              err instanceof Error
+                                ? err.message
+                                : "Suppression impossible",
+                            ),
+                          );
+                      }}
+                    >
+                      <Trash2 className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            );
+            })}
+          </ul>
 
-      {!isLoading && (data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-ink-500 dark:text-ink-300">
-          Aucune location. Ajoute ta première entrée.
-        </p>
-      ) : null}
+          {!isLoading && (data?.length ?? 0) === 0 ? (
+            <p className="text-sm text-ink-500 dark:text-ink-300">
+              Aucune location. Ajoute ta première entrée.
+            </p>
+          ) : null}
 
-      {!isLoading && (data?.length ?? 0) > 0 && filteredRentals.length === 0 ? (
-        <p className="text-sm text-ink-500 dark:text-ink-300">
-          Aucune location ne correspond aux filtres.
-        </p>
-      ) : null}
+          {!isLoading &&
+          (data?.length ?? 0) > 0 &&
+          filteredRentals.length === 0 ? (
+            <p className="text-sm text-ink-500 dark:text-ink-300">
+              Aucune location ne correspond aux filtres.
+            </p>
+          ) : null}
+        </>
+      )}
 
       {open ? (
         <div className="fixed inset-0 z-30 grid place-items-end bg-ink-950/40 p-4 sm:place-items-center">
@@ -416,6 +514,16 @@ export function RentalsPage() {
                 readOnly
                 hint="Calculé auto : brut − revenus (commission + carburant, etc.)."
               />
+              {formDailyPreview ? (
+                <p className="rounded-xl bg-ink-50 px-3 py-2.5 text-sm text-ink-700 dark:bg-ink-950/50 dark:text-ink-200">
+                  <span className="font-semibold text-ink-900 dark:text-ink-50">
+                    {formatMoney(formDailyPreview.daily)}/j
+                  </span>
+                  {" · "}
+                  net sur {formDailyPreview.days} jour
+                  {formDailyPreview.days > 1 ? "s" : ""}
+                </p>
+              ) : null}
               <Field
                 id="notes"
                 label="Notes"
